@@ -1,11 +1,38 @@
+import { FolderKanban } from "lucide-react";
+import { Navigate } from "react-router";
+
 import { defineAppRoutes } from "@nocobase/portal-sdk/routing";
 
-// Set this to false when the application no longer needs the example routes
-// contributed by installed Registry extensions. Providers, adapters, and the
-// development showcase under /dev remain available.
-export const registryRoutesEnabled = true;
+// The bundled Registry routes are examples; the strategy consulting platform defines
+// its own navigation below. Providers, adapters and /dev showcases stay available.
+export const registryRoutesEnabled = false;
 
-// Add application-owned business routes here. Installed Registry extensions
-// contribute their own route definitions through the same runtime. Add a
-// resource entry when a route should also appear in navigation.
-export const appRoutes = defineAppRoutes([]);
+export const appRoutes = defineAppRoutes([
+  {
+    name: "projects",
+    path: "/projects",
+    lazy: () => import("@/pages/projects/list"),
+    resource: {
+      meta: {
+        label: "我的项目",
+        priority: 1,
+        icon: <FolderKanban />,
+        description: "进入正在推进的战略咨询项目。",
+      },
+    },
+  },
+  {
+    // Project workspace: rendered full-width with its own project navigation
+    // (see Layout), so it is not a sidebar menu item.
+    name: "project",
+    path: "/projects/:projectId",
+    lazy: () => import("@/pages/projects/project-layout"),
+    outlet: "manual",
+    children: [
+      { name: "project.index", index: true, element: <Navigate to="overview" replace /> },
+      { name: "project.overview", path: "overview", lazy: () => import("@/pages/projects/overview") },
+      { name: "project.workspace", path: "workspace", lazy: () => import("@/pages/projects/workspace") },
+      { name: "project.workspace.artifact", path: "workspace/:code", lazy: () => import("@/pages/projects/workspace") },
+    ],
+  },
+]);

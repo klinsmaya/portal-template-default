@@ -154,7 +154,7 @@ function SettingsLink({ className }: { className?: string }) {
   );
 }
 
-const UserDropdown = () => {
+export const UserDropdown = () => {
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
   const translate = useTranslate();
 
