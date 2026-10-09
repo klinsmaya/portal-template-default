@@ -73,7 +73,7 @@ function App() {
 
                     <Toaster />
                     <UnsavedChangesNotifier />
-                    <DocumentTitleHandler appName="NocoBase" />
+                    <DocumentTitleHandler appName="定三责" />
                   </Refine>
                 </AclStoreProvider>
               </SystemSettingsProvider>

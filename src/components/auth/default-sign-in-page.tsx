@@ -11,10 +11,7 @@ export function DefaultSignInPage({
   renderAuthenticator,
 }: DefaultSignInPageProps) {
   return (
-    <AuthLayout
-      title="Welcome back"
-      description="Choose a sign-in method configured in NocoBase."
-    >
+    <AuthLayout title="登录" description="使用咨询机构为你开通的账号登录。">
       <DynamicSignIn renderAuthenticator={renderAuthenticator} />
     </AuthLayout>
   );
