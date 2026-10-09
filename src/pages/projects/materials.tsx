@@ -26,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type ProposedChange, applyChanges } from "@/lib/dingze/changes";
 import { PROPOSE_TOOL } from "@/lib/dingze/coach";
 import { errorMessage } from "@/lib/dingze/errors";
-import { MATERIAL_ACCEPT, extractText } from "@/lib/dingze/extract-text";
+import { MATERIAL_ACCEPT, SPREADSHEET_EXTENSIONS, extractText } from "@/lib/dingze/extract-text";
 import { SEARCH_MATERIALS_TOOL } from "@/lib/dingze/material-tools";
 import { type MaterialSummary, useAddMaterial, useDeleteMaterial, useMaterial, useMaterials, useProfile, useSaveProfile } from "@/lib/dingze/materials-api";
 import { formatTime } from "@/lib/dingze/records";
@@ -108,7 +108,11 @@ function MaterialLibrary({ materials, canEdit, canDeleteAny, currentUserId }: { 
       try {
         const text = await extractText(file);
         if (!text.trim()) {
-          toast.error(`《${file.name}》没有读到文字，可能是扫描件；请粘贴文字或上传可复制文字的版本`);
+          toast.error(
+            SPREADSHEET_EXTENSIONS.some((e) => file.name.toLowerCase().endsWith(`.${e}`))
+              ? `《${file.name}》的表格里没有内容`
+              : `《${file.name}》没有读到文字，可能是扫描件；请粘贴文字或上传可复制文字的版本`
+          );
           continue;
         }
         const result = await add.mutateAsync({ title: file.name.replace(/\.[^.]+$/, ""), kind: "file", fileName: file.name, size: file.size, text });
@@ -142,7 +146,7 @@ function MaterialLibrary({ materials, canEdit, canDeleteAny, currentUserId }: { 
       </div>
       {materials.length === 0 ? (
         <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-          还没有资料。可上传 txt、md、csv、docx、pdf、xlsx（不超过 20 MB），或直接粘贴文字。
+          还没有资料。可上传 Word（docx）、PDF、Excel（xlsx、xls、xlsm、xlsb、ods）、txt、md、csv（不超过 20 MB），或直接粘贴文字。
         </p>
       ) : (
         <ul className="overflow-hidden rounded-xl border bg-card">

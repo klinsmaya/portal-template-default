@@ -1,7 +1,9 @@
 // Turn an uploaded file into plain text in the browser; only the text is stored. The parsers
 // load on demand so they stay out of the main bundle.
 
-export const MATERIAL_ACCEPT = ".txt,.md,.csv,.docx,.pdf,.xlsx";
+/** Spreadsheet formats read with SheetJS: Excel 2007+ and 97–2003, macro / binary workbooks, OpenDocument. */
+export const SPREADSHEET_EXTENSIONS = ["xlsx", "xls", "xlsm", "xlsb", "ods"];
+export const MATERIAL_ACCEPT = [".txt", ".md", ".csv", ".docx", ".pdf", ...SPREADSHEET_EXTENSIONS.map((e) => `.${e}`)].join(",");
 export const MATERIAL_MAX_BYTES = 20 * 1024 * 1024;
 
 export class UnsupportedFileError extends Error {}
@@ -29,19 +31,34 @@ export async function extractText(file: File): Promise<string> {
     }
     return pages.join("\n\n");
   }
-  if (ext === "xlsx") {
-    const { Workbook } = await import("exceljs");
-    const book = new Workbook();
-    await book.xlsx.load(await file.arrayBuffer());
-    const lines: string[] = [];
-    book.eachSheet((sheet) => {
-      lines.push(`【${sheet.name}】`);
-      sheet.eachRow((row) => {
-        const values = (row.values as unknown[]).slice(1).map((v) => (v && typeof v === "object" && "text" in (v as object) ? String((v as { text: unknown }).text) : v ?? ""));
-        lines.push(values.join("\t"));
-      });
-    });
-    return lines.join("\n");
+  if (SPREADSHEET_EXTENSIONS.includes(ext)) return spreadsheetText(await file.arrayBuffer());
+  throw new UnsupportedFileError("暂不支持这种格式：请上传 txt、md、csv、docx、pdf 或 Excel（xlsx、xls 等），或把文字粘贴进来");
+}
+
+/**
+ * Every sheet as a 【name】 heading followed by its rows, cells joined by tabs. Cells show
+ * their formatted text as Excel would (formula results, dates, percentages); empty rows and
+ * trailing empty cells are dropped.
+ */
+export async function spreadsheetText(data: ArrayBuffer | Uint8Array): Promise<string> {
+  const XLSX = await import("xlsx");
+  let book: import("xlsx").WorkBook;
+  try {
+    book = XLSX.read(data, { type: "array", cellDates: true, dense: true });
+  } catch {
+    throw new UnsupportedFileError("读不了这个表格文件，可能已损坏或设了打开密码；请另存为 xlsx 后再上传");
   }
-  throw new UnsupportedFileError("暂不支持这种格式：请上传 txt、md、csv、docx、pdf 或 xlsx，或把文字粘贴进来");
+  const parts: string[] = [];
+  for (const name of book.SheetNames) {
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(book.Sheets[name], { header: 1, raw: false, defval: "", blankrows: false });
+    const lines = rows
+      .map((row) => {
+        const cells = row.map((v) => String(v ?? "").replace(/\s*\n\s*/g, " ").trim());
+        while (cells.length && !cells[cells.length - 1]) cells.pop();
+        return cells.join("\t");
+      })
+      .filter((line) => line.trim());
+    if (lines.length) parts.push(`【${name}】`, ...lines);
+  }
+  return parts.join("\n");
 }
