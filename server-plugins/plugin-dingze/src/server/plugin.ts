@@ -14,6 +14,7 @@ import {
   transitionArtifact,
 } from './services/artifacts';
 import { consultantBoard } from './services/board';
+import { opsBoard } from './services/usage';
 import { addMaterial, deleteMaterial, getMaterial, getProfile, listMaterials, saveProfile, searchMaterials } from './services/materials';
 import { addComment, listComments, resolveComment } from './services/comments';
 import { markNotificationsRead, myNotifications } from './services/notify';
@@ -83,6 +84,7 @@ export class PluginDingzeServer extends Plugin {
       actions: {
         myProjects: action((ctx) => myProjects(ctx)),
         consultantBoard: action((ctx) => consultantBoard(ctx)),
+        opsBoard: action((ctx) => opsBoard(ctx)),
         projectOverview: action(async (ctx) => {
           const pc = await loadProjectContext(ctx, ctx.action.params.projectId);
           return projectOverview(ctx, pc);

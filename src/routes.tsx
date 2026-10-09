@@ -1,4 +1,4 @@
-import { BookOpenCheck, Building, Building2, ClipboardList, FolderKanban, Settings2, UsersRound } from "lucide-react";
+import { Activity, BookOpenCheck, Building, Building2, ClipboardList, FolderKanban, Settings2, UsersRound } from "lucide-react";
 import { Navigate, Outlet } from "react-router";
 
 import { defineAppRoutes } from "@nocobase/portal-sdk/routing";
@@ -78,7 +78,15 @@ export const appRoutes = defineAppRoutes([
       meta: { label: "运营管理", priority: 10, icon: <Settings2 /> },
     },
     children: [
-      { name: "ops.index", index: true, element: <Navigate to="enterprises" replace /> },
+      { name: "ops.index", index: true, element: <Navigate to="board" replace /> },
+      {
+        name: "ops.board",
+        path: "board",
+        lazy: () => import("@/pages/ops/board"),
+        resource: {
+          meta: { label: "运营看板", priority: 0, icon: <Activity />, description: "项目进度、待办积压与数字咨询师用量。" },
+        },
+      },
       {
         name: "ops.enterprises",
         path: "enterprises",

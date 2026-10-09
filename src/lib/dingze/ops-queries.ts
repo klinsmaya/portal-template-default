@@ -5,12 +5,17 @@ import { type SystemRole, opsApi } from "./ops-api";
 export const opsKeys = {
   all: ["dingze", "ops"] as const,
   enterprises: ["dingze", "ops", "enterprises"] as const,
+  board: ["dingze", "ops", "board"] as const,
   enterprise: (id: number) => ["dingze", "ops", "enterprise", id] as const,
   users: (role?: SystemRole, q?: string) => ["dingze", "ops", "users", role ?? "", q ?? ""] as const,
 };
 
 export function useEnterprises() {
   return useQuery({ queryKey: opsKeys.enterprises, queryFn: opsApi.listEnterprises });
+}
+
+export function useOpsBoard() {
+  return useQuery({ queryKey: opsKeys.board, queryFn: opsApi.opsBoard });
 }
 
 export function useEnterpriseDetail(enterpriseId: number | undefined) {

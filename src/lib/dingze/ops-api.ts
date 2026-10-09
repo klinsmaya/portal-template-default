@@ -76,7 +76,33 @@ const get = <T>(action: string, query: Record<string, string | number | undefine
 const post = <T>(action: string, body: unknown) =>
   nocobaseClient.action<T>("dingze", action, { body });
 
+export type OpsBoardProject = {
+  id: number;
+  name: string;
+  year: number;
+  enterpriseId: number;
+  stages: { key: string; name: string; locked: number; total: number }[];
+  backlog: { stepDone: number; inReview: number; pendingConfirm: number; stale: number; comments: number };
+  lastActivityAt: string | null;
+  usage: {
+    turns: number;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    turns30: number;
+    tokens30: number;
+    users: number;
+    lastAt: string | null;
+  } | null;
+};
+
+export type OpsBoard = {
+  enterprises: Pick<Enterprise, "id" | "name" | "shortName" | "status">[];
+  projects: OpsBoardProject[];
+};
+
 export const opsApi = {
+  opsBoard: () => get<OpsBoard>("opsBoard"),
   listEnterprises: () => get<(Enterprise & { projects?: OpsProject[] })[]>("listEnterprises"),
   enterpriseDetail: (enterpriseId: number) => get<EnterpriseDetail>("enterpriseDetail", { enterpriseId }),
   provisionEnterprise: (values: {
