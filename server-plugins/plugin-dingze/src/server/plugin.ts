@@ -14,6 +14,19 @@ import {
   transitionArtifact,
 } from './services/artifacts';
 import { createProject, listEnterprises, myProjects, provisionEnterprise, setProjectMembers } from './services/enterprises';
+import {
+  addEnterpriseMembers,
+  createUser,
+  deleteOrgUnit,
+  enterpriseDetail,
+  listUsers,
+  removeEnterpriseMember,
+  removeProjectMember,
+  resetPassword,
+  saveOrgUnit,
+  updateEnterprise,
+  updateProject,
+} from './services/ops';
 
 const TRANSITIONS: LifecycleAction[] = [
   'stepDone',
@@ -103,6 +116,17 @@ export class PluginDingzeServer extends Plugin {
         listEnterprises: action((ctx) => listEnterprises(ctx)),
         createProject: action((ctx) => createProject(ctx, values(ctx) as any)),
         setProjectMembers: action((ctx) => setProjectMembers(ctx, values(ctx).projectId, values(ctx).members)),
+        updateProject: action((ctx) => updateProject(ctx, values(ctx) as any)),
+        removeProjectMember: action((ctx) => removeProjectMember(ctx, values(ctx) as any)),
+        enterpriseDetail: action((ctx) => enterpriseDetail(ctx, ctx.action.params.enterpriseId)),
+        updateEnterprise: action((ctx) => updateEnterprise(ctx, values(ctx) as any)),
+        addEnterpriseMembers: action((ctx) => addEnterpriseMembers(ctx, values(ctx) as any)),
+        removeEnterpriseMember: action((ctx) => removeEnterpriseMember(ctx, values(ctx) as any)),
+        saveOrgUnit: action((ctx) => saveOrgUnit(ctx, values(ctx) as any)),
+        deleteOrgUnit: action((ctx) => deleteOrgUnit(ctx, values(ctx) as any)),
+        listUsers: action((ctx) => listUsers(ctx, ctx.action.params as any)),
+        createUser: action((ctx) => createUser(ctx, values(ctx) as any)),
+        resetPassword: action((ctx) => resetPassword(ctx, values(ctx) as any)),
       },
     });
     // Every handler checks space membership, project role and artifact status itself.

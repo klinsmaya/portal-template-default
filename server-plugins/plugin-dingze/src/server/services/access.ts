@@ -88,6 +88,10 @@ export async function loadProjectContext(ctx: Context, projectId: unknown): Prom
   if (!spaces.includes(spaceName)) throw new HttpError(404, '项目不存在或无权访问');
 
   const access = await systemAccess(ctx);
+  if (!access.isOps) {
+    const enterprise = await ctx.db.getRepository('dz_enterprises').findOne({ filterByTk: project.get('enterpriseId') });
+    if (enterprise?.get('status') === 'suspended') throw new HttpError(403, '该企业已停用，请联系咨询机构', 'ENTERPRISE_SUSPENDED');
+  }
   const membership = await ctx.db.getRepository('dz_project_members').findOne({
     filter: { projectId: id, userId: currentUserId(ctx) },
   });

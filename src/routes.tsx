@@ -1,11 +1,14 @@
-import { FolderKanban } from "lucide-react";
-import { Navigate } from "react-router";
+import { BookOpenCheck, Building, Building2, FolderKanban, Settings2, UsersRound } from "lucide-react";
+import { Navigate, Outlet } from "react-router";
 
 import { defineAppRoutes } from "@nocobase/portal-sdk/routing";
 
 // The bundled Registry routes are examples; the strategy consulting platform defines
 // its own navigation below. Providers, adapters and /dev showcases stay available.
 export const registryRoutesEnabled = false;
+
+// 运营管理 is for ops and consulting admins (root passes every role check).
+const OPS_ACCESS = { roles: { anyOf: ["dz_ops", "dz_consult_admin"] } };
 
 export const appRoutes = defineAppRoutes([
   {
@@ -33,6 +36,57 @@ export const appRoutes = defineAppRoutes([
       { name: "project.overview", path: "overview", lazy: () => import("@/pages/projects/overview") },
       { name: "project.workspace", path: "workspace", lazy: () => import("@/pages/projects/workspace") },
       { name: "project.workspace.artifact", path: "workspace/:code", lazy: () => import("@/pages/projects/workspace") },
+    ],
+  },
+  {
+    name: "my-enterprise",
+    path: "/enterprise",
+    lazy: () => import("@/pages/enterprise"),
+    access: { roles: { anyOf: ["dz_ent_admin"] } },
+    resource: {
+      meta: {
+        label: "本企业",
+        priority: 2,
+        icon: <Building />,
+        description: "维护本企业的成员账号和组织部门。",
+      },
+    },
+  },
+  {
+    name: "ops",
+    path: "/ops",
+    element: <Outlet />,
+    access: OPS_ACCESS,
+    resource: {
+      meta: { label: "运营管理", priority: 10, icon: <Settings2 /> },
+    },
+    children: [
+      { name: "ops.index", index: true, element: <Navigate to="enterprises" replace /> },
+      {
+        name: "ops.enterprises",
+        path: "enterprises",
+        lazy: () => import("@/pages/ops/enterprises"),
+        resource: {
+          meta: { label: "企业与开通", priority: 1, icon: <Building2 />, description: "开通企业、停用企业、管理企业成员与项目。" },
+        },
+      },
+      { name: "ops.enterprise", path: "enterprises/:enterpriseId", lazy: () => import("@/pages/ops/enterprise-detail") },
+      {
+        name: "ops.team",
+        path: "team",
+        lazy: () => import("@/pages/ops/team"),
+        resource: {
+          meta: { label: "咨询团队", priority: 2, icon: <UsersRound />, description: "咨询师、咨询管理员与运营管理员账号。" },
+        },
+      },
+      {
+        name: "ops.methods",
+        path: "methods",
+        lazy: () => import("@/pages/ops/methods"),
+        resource: {
+          meta: { label: "方法与规则包", priority: 3, icon: <BookOpenCheck />, description: "成果目录与数字咨询师（只读）。" },
+        },
+      },
     ],
   },
 ]);

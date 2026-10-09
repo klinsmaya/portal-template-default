@@ -3,7 +3,8 @@ import { randomBytes } from 'node:crypto';
 import type { Context } from '@nocobase/actions';
 
 import { PROJECT_ROLE_LABELS, type ProjectRole } from '../../shared';
-import { HttpError, currentUserId, requireOps, systemAccess, userSpaceNames } from './access';
+import { HttpError, SYSTEM_ROLES, currentUserId, requireOps, systemAccess, userSpaceNames } from './access';
+import { creator, insertUser } from './ops';
 
 const PROJECT_ROLES = Object.keys(PROJECT_ROLE_LABELS) as ProjectRole[];
 
@@ -31,6 +32,8 @@ export interface ProvisionInput {
   size?: 'large' | 'sme';
   consultantIds?: number[];
   memberIds?: number[];
+  /** Create the enterprise admin account in the same step. */
+  admin?: { username: string; nickname: string; email?: string; phone?: string };
 }
 
 /** 开通企业：建空间 → 企业档案 → 开通人、咨询师、企业成员加入空间。 */
@@ -46,16 +49,20 @@ export async function provisionEnterprise(ctx: Context, input: ProvisionInput) {
     await ctx.db.getRepository('spaces').create({ values: { name: spaceName, title: shortName }, transaction });
     await addUsersToSpace(ctx, spaceName, [...new Set(userIds)], transaction);
     const enterprise = await ctx.db.getRepository('dz_enterprises').create({
-      values: { name, shortName, size, status: 'active', spaceName },
-      context: ctx,
+      values: { name, shortName, size, status: 'active', spaceName, ...creator(ctx) },
       transaction,
     });
-    return { enterprise: enterprise.toJSON(), spaceName };
+    const admin = input.admin
+      ? await insertUser(ctx, { ...input.admin, systemRole: SYSTEM_ROLES.entAdmin }, spaceName, transaction)
+      : null;
+    return { enterprise: enterprise.toJSON(), spaceName, admin };
   });
 }
 
+/** Ops see every enterprise whose space they joined; an enterprise admin sees their own. */
 export async function listEnterprises(ctx: Context) {
-  requireOps(await systemAccess(ctx));
+  const access = await systemAccess(ctx);
+  if (!access.isOps && !access.roles.includes(SYSTEM_ROLES.entAdmin)) requireOps(access);
   const spaces = await userSpaceNames(ctx);
   const rows = await ctx.db.getRepository('dz_enterprises').find({
     filter: { spaceName: { $in: spaces } },
@@ -113,8 +120,8 @@ export async function createProject(ctx: Context, input: ProjectInput) {
         keyProjectLevel: input.keyProjectLevel === 1 ? 1 : 2,
         scheduleScale: input.scheduleScale === 'quarter' ? 'quarter' : 'month',
         spaceName,
+        ...creator(ctx),
       },
-      context: ctx,
       transaction,
     });
     await upsertMembers(ctx, project.get('id'), spaceName, list, transaction);
@@ -130,8 +137,7 @@ async function upsertMembers(ctx: Context, projectId: number, spaceName: string,
       await existing.update({ projectRole: m.projectRole, orgUnitId: m.orgUnitId ?? null }, { transaction });
     } else {
       await repo.create({
-        values: { projectId, userId: m.userId, projectRole: m.projectRole, orgUnitId: m.orgUnitId, spaceName },
-        context: ctx,
+        values: { projectId, userId: m.userId, projectRole: m.projectRole, orgUnitId: m.orgUnitId, spaceName, ...creator(ctx) },
         transaction,
       });
     }

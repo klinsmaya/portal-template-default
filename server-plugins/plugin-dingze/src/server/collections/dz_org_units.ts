@@ -11,6 +11,7 @@ export default defineCollection({
     { type: 'belongsTo', name: 'enterprise', target: 'dz_enterprises', foreignKey: 'enterpriseId' },
     { type: 'string', name: 'name', allowNull: false },
     { type: 'string', name: 'kind', defaultValue: 'department' },
+    { type: 'belongsTo', name: 'parent', target: 'dz_org_units', foreignKey: 'parentId' },
     { type: 'belongsTo', name: 'head', target: 'users', foreignKey: 'headId' },
     { type: 'integer', name: 'sort', defaultValue: 0 },
     spaceField,
