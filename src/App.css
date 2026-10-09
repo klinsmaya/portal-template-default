@@ -329,3 +329,8 @@
     padding-inline-start: var(--chat-side-panel-width);
   }
 }
+
+/* The 定责 workspace embeds its stage consultant; the global floating entry would cover its composer. */
+body:has([data-dingze-coach]) [data-slot="ai-chat-drag-handle"] {
+  display: none;
+}

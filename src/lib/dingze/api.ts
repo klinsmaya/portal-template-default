@@ -116,7 +116,7 @@ export async function getArtifactDetail(projectId: number, spaceName: string, co
 
 export async function saveArtifact(
   spaceName: string,
-  values: { projectId: number; code: string; payload: unknown; baseRev: number; note?: string; fromProposalId?: number }
+  values: { projectId: number; code: string; payload: unknown; baseRev: number; note?: string; fromProposalId?: number; aiSuggested?: boolean }
 ) {
   return nocobaseClient.action<{ status: ArtifactStatus; rev: number; versionId: number }>(
     "dingze",

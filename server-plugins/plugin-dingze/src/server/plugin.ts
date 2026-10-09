@@ -80,6 +80,7 @@ export class PluginDingzeServer extends Plugin {
             baseRev: Number(v.baseRev ?? 0),
             note: v.note,
             fromProposalId: v.fromProposalId ? Number(v.fromProposalId) : undefined,
+            aiSuggested: v.aiSuggested === true,
           });
         }),
         transition: action(async (ctx) => {

@@ -135,8 +135,10 @@ export interface SaveInput {
   payload: unknown;
   baseRev: number;
   note?: string;
-  /** Set when the content comes from accepting an AI proposal. */
+  /** Set when the content comes from accepting a stored AI proposal. */
   fromProposalId?: number;
+  /** Set when the user confirmed a digital consultant's suggestion in the chat. */
+  aiSuggested?: boolean;
 }
 
 export async function saveArtifact(ctx: Context, pc: ProjectContext, def: ArtifactDef, input: SaveInput) {
@@ -155,7 +157,7 @@ export async function saveArtifact(ctx: Context, pc: ProjectContext, def: Artifa
     const from = artifact.get('status') as ArtifactStatus;
     const to = nextStatus('save', from, pc.actor);
     const isConsultant = !!pc.projectRole && CONSULTANTS.includes(pc.projectRole);
-    const kind = input.fromProposalId ? 'ai_draft' : isConsultant ? 'consultant_revision' : 'enterprise_edit';
+    const kind = input.fromProposalId || input.aiSuggested ? 'ai_draft' : isConsultant ? 'consultant_revision' : 'enterprise_edit';
     const upstream = await upstreamState(ctx, projectId, def, transaction);
     const version = await ctx.db.getRepository('dz_artifact_versions').create({
       values: {
