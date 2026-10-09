@@ -30,6 +30,7 @@ import { errorMessage } from "@/lib/dingze/errors";
 
 import { ArtifactActions, DissentList } from "./components/artifact-actions";
 import { CoachPanel } from "./components/coach-panel";
+import { ExportButton } from "./components/export-button";
 import { StepBar } from "./components/step-bar";
 import { ValidationBar } from "./components/validation-bar";
 import { ArtifactEditor } from "./editors/artifact-editor";
@@ -289,6 +290,17 @@ function Workspace({ code }: { code: string }) {
               </span>
             ) : null}
             <div className="ml-auto flex flex-wrap gap-2">
+              <ExportButton
+                code={code}
+                name={def.name}
+                payload={artifact?.currentVersion?.payload}
+                rev={artifact?.currentRev ?? 0}
+                status={status}
+                enterprise={project.enterprise?.shortName ?? "企业"}
+                projectName={project.name}
+                upstream={upstream}
+                dirty={dirty}
+              />
               {!readOnly && EDITABLE_CODES.has(code) ? (
                 <Button
                   variant="outline"
