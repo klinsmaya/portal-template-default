@@ -7,3 +7,4 @@ export * from './goals';
 export * from './actions';
 export * from './diff';
 export * from './book-notes';
+export * from './materials';

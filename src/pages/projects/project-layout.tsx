@@ -15,6 +15,7 @@ import type { ProjectContextValue } from "./project-context";
 const NAV = [
   { to: "overview", label: "工作台" },
   { to: "workspace", label: "咨询工作区" },
+  { to: "materials", label: "资料与画像" },
   { to: "artifacts", label: "成果与定版" },
   { to: "delivery", label: "交付" },
 ];

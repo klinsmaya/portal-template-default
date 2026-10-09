@@ -10,6 +10,7 @@ import {
   isArtifactCode,
   validateArtifact,
   ARTIFACTS,
+  profileBrief,
 } from "@dingze/shared";
 
 import { useAIPageElementHandle } from "@/extensions/nocobase-ai/components";
@@ -25,6 +26,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { nextStep, workspacePath } from "@/lib/dingze/progress";
 import { useArtifactDetail, useSaveArtifact, useUpstreamPayloads } from "@/lib/dingze/queries";
 import { useComments } from "@/lib/dingze/comments-api";
+import { SEARCH_MATERIALS_TOOL } from "@/lib/dingze/material-tools";
+import { useProfile } from "@/lib/dingze/materials-api";
 import { initHistory, recordDraft, redoDraft, undoDraft } from "@/lib/dingze/draft-history";
 import { nextArtifact } from "@/lib/dingze/next-step";
 import { useRecordExport } from "@/lib/dingze/records-queries";
@@ -212,6 +215,7 @@ function Workspace({ code }: { code: string }) {
     readOnly,
     editable: EDITABLE_CODES.has(code),
   };
+  const profile = useProfile(project);
   const saveRef = useRef(save.mutateAsync);
   saveRef.current = save.mutateAsync;
   const tools = useMemo(
@@ -313,6 +317,8 @@ function Workspace({ code }: { code: string }) {
       issues: latest.current.draft
         ? validateArtifact(code, latest.current.draft, upstream)
         : [],
+      enterpriseProfile: profileBrief(profile.data) || "（企业画像还没有内容）",
+      materialsHint: `起草或核对数字时可用 ${SEARCH_MATERIALS_TOOL} 查阅企业资料`,
     }),
   });
 

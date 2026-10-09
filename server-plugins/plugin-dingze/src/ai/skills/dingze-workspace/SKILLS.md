@@ -4,6 +4,7 @@ name: dingze-workspace
 description: 读取并修改定责工作台里的成果表：读取最新草稿和上游成果，用修改建议卡提交修改，由用户确认后写入。
 tools:
   - dingzeGetArtifact
+  - dingzeSearchMaterials
 introduction:
   title: 定责工作台
   about: 读取成果表、提出修改建议
@@ -56,3 +57,10 @@ introduction:
 | S3-08 部门计划书 | `depts[{id(=deptId),deptId,deptName,summary,lastYear,environment,risks,notDo,dictionaryNote}]`（按 deptId 定位） | `depts.org-2.summary` |
 
 指标值、分数这类数字，以用户说出的为准；用户没给的值写“待补”，不要替企业编数。年度目标（S2-03-T）的指标值只能来自 S1-07 本年度值、经营预算或用户明确给出的数，绝不自行补造。
+
+
+## 企业资料与画像
+
+- 起草或核对数字前，先用 `dingzeSearchMaterials` 查阅企业资料（必传 `projectId`）：不传 query 得到资料清单，传 `query`（关键词，空格分隔）得到带出处的片段，传 `id` 读全文（`offset` 翻页）。一次只调用一个工具，等结果回来再调下一个。引用时写明资料标题；资料里没有的数写“待补”，不要编。
+- 页面上下文里的 `enterpriseProfile` 是企业画像摘要（事实 / 假设 / 未知 / 待补），起草时以“事实”为准，“假设”要向用户点明。
+- 在“资料与画像”页，可以把资料整理成画像：`items[{id,category(fact/assumption/unknown/todo),topic,content,source(资料编号字符串),status:'draft'}]`，新增用 `items.+`，修改用 `items.<id>.content`；复核和确认由咨询师、企业项目负责人在页面上完成，你不要改 `status`。

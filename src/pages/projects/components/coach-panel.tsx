@@ -149,7 +149,6 @@ function ProposalRenderer(props: AIToolRendererProps) {
   const { toolId } = readProposal(props.part);
   if (toolId?.endsWith(`:${PROPOSE_TOOL}`))
     return <SuggestionCard {...props} />;
-  // Only the proposal tool is registered on this page; anything else gets a plain row.
   return (
     <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
       页面工具 {toolId ?? ""}

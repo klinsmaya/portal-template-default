@@ -14,6 +14,7 @@ import {
   transitionArtifact,
 } from './services/artifacts';
 import { consultantBoard } from './services/board';
+import { addMaterial, deleteMaterial, getMaterial, getProfile, listMaterials, saveProfile, searchMaterials } from './services/materials';
 import { addComment, listComments, resolveComment } from './services/comments';
 import { markNotificationsRead, myNotifications } from './services/notify';
 import { artifactHistory, artifactRegistry, deliveryBundle, recordExport, versionDiff } from './services/registry';
@@ -136,6 +137,28 @@ export class PluginDingzeServer extends Plugin {
           const v = values(ctx);
           const pc = await loadProjectContext(ctx, v.projectId);
           return resolveComment(ctx, pc, v);
+        }),
+        listMaterials: action(async (ctx) => listMaterials(ctx, await loadProjectContext(ctx, ctx.action.params.projectId))),
+        getMaterial: action(async (ctx) => {
+          const p = ctx.action.params;
+          return getMaterial(ctx, await loadProjectContext(ctx, p.projectId), p.id, p.offset);
+        }),
+        addMaterial: action(async (ctx) => {
+          const v = values(ctx);
+          return addMaterial(ctx, await loadProjectContext(ctx, v.projectId), v);
+        }),
+        deleteMaterial: action(async (ctx) => {
+          const v = values(ctx);
+          return deleteMaterial(ctx, await loadProjectContext(ctx, v.projectId), v.id);
+        }),
+        searchMaterials: action(async (ctx) => {
+          const p = ctx.action.params;
+          return searchMaterials(ctx, await loadProjectContext(ctx, p.projectId), p.query);
+        }),
+        getProfile: action(async (ctx) => getProfile(ctx, await loadProjectContext(ctx, ctx.action.params.projectId))),
+        saveProfile: action(async (ctx) => {
+          const v = values(ctx);
+          return saveProfile(ctx, await loadProjectContext(ctx, v.projectId), v);
         }),
         myNotifications: action((ctx) => myNotifications(ctx, ctx.action.params as any)),
         markNotificationsRead: action((ctx) => markNotificationsRead(ctx, values(ctx))),
