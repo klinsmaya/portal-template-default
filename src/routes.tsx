@@ -1,4 +1,4 @@
-import { Activity, BookOpenCheck, Building, Building2, ClipboardList, FolderKanban, Settings2, UsersRound } from "lucide-react";
+import { Activity, BookOpenCheck, Building, Building2, ClipboardList, FolderKanban, MessagesSquare, Settings2, UsersRound } from "lucide-react";
 import { Navigate, Outlet } from "react-router";
 
 import { defineAppRoutes } from "@nocobase/portal-sdk/routing";
@@ -39,6 +39,7 @@ export const appRoutes = defineAppRoutes([
       { name: "project.materials", path: "materials", lazy: () => import("@/pages/projects/materials") },
       { name: "project.artifacts", path: "artifacts", lazy: () => import("@/pages/projects/artifacts") },
       { name: "project.delivery", path: "delivery", lazy: () => import("@/pages/projects/delivery") },
+      { name: "project.expert", path: "expert", lazy: () => import("@/pages/projects/expert") },
     ],
   },
   {
@@ -69,6 +70,15 @@ export const appRoutes = defineAppRoutes([
       },
     },
   },
+  {
+    name: "expert",
+    path: "/expert",
+    lazy: () => import("@/pages/expert/list"),
+    resource: {
+      meta: { label: "专家咨询", priority: 5, icon: <MessagesSquare />, description: "需要人工判断的关键问题：受理、预约、纪要与专家意见。" },
+    },
+  },
+  { name: "expert.detail", path: "/expert/:requestId", lazy: () => import("@/pages/expert/detail") },
   {
     name: "ops",
     path: "/ops",

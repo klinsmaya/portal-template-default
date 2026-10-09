@@ -16,6 +16,7 @@ import {
 import { consultantBoard } from './services/board';
 import { opsBoard } from './services/usage';
 import { addGuidanceGap, listGuidanceGaps, reviewGuidanceGap } from './services/guidance';
+import { actOnExpertRequest, createExpertRequest, expertRequestDetail, listExpertRequests } from './services/expert';
 import { addMaterial, deleteMaterial, getMaterial, getProfile, listMaterials, saveProfile, searchMaterials } from './services/materials';
 import { addComment, listComments, resolveComment } from './services/comments';
 import { markNotificationsRead, myNotifications } from './services/notify';
@@ -104,6 +105,13 @@ export class PluginDingzeServer extends Plugin {
         }),
         listGuidanceGaps: action((ctx) => listGuidanceGaps(ctx)),
         reviewGuidanceGap: action((ctx) => reviewGuidanceGap(ctx, values(ctx))),
+        listExpertRequests: action((ctx) => listExpertRequests(ctx, { projectId: ctx.action.params.projectId })),
+        expertRequestDetail: action((ctx) => expertRequestDetail(ctx, ctx.action.params.id)),
+        createExpertRequest: action(async (ctx) => {
+          const v = values(ctx);
+          return createExpertRequest(ctx, await loadProjectContext(ctx, v.projectId), v);
+        }),
+        actOnExpertRequest: action((ctx) => actOnExpertRequest(ctx, values(ctx))),
         projectOverview: action(async (ctx) => {
           const pc = await loadProjectContext(ctx, ctx.action.params.projectId);
           return projectOverview(ctx, pc);

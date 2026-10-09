@@ -18,6 +18,7 @@ const NAV = [
   { to: "materials", label: "资料与画像" },
   { to: "artifacts", label: "成果与定版" },
   { to: "delivery", label: "交付" },
+  { to: "expert", label: "专家咨询" },
 ];
 
 export default function ProjectLayout() {
