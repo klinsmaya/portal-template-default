@@ -14,6 +14,8 @@ import {
   transitionArtifact,
 } from './services/artifacts';
 import { consultantBoard } from './services/board';
+import { markNotificationsRead, myNotifications } from './services/notify';
+import { artifactHistory, artifactRegistry, deliveryBundle, recordExport, versionDiff } from './services/registry';
 import { createProject, listEnterprises, myProjects, provisionEnterprise, setProjectMembers } from './services/enterprises';
 import {
   addEnterpriseMembers,
@@ -104,6 +106,24 @@ export class PluginDingzeServer extends Plugin {
           const pc = await loadProjectContext(ctx, v.projectId);
           return transitionArtifact(ctx, pc, requireArtifactDef(v.code), v.action, v.reason);
         }),
+        artifactRegistry: action(async (ctx) => artifactRegistry(ctx, await loadProjectContext(ctx, ctx.action.params.projectId))),
+        artifactHistory: action(async (ctx) => {
+          const pc = await loadProjectContext(ctx, ctx.action.params.projectId);
+          return artifactHistory(ctx, pc, requireArtifactDef(ctx.action.params.code));
+        }),
+        versionDiff: action(async (ctx) => {
+          const p = ctx.action.params;
+          const pc = await loadProjectContext(ctx, p.projectId);
+          return versionDiff(ctx, pc, requireArtifactDef(p.code), p.from, p.to);
+        }),
+        deliveryBundle: action(async (ctx) => deliveryBundle(ctx, await loadProjectContext(ctx, ctx.action.params.projectId))),
+        recordExport: action(async (ctx) => {
+          const v = values(ctx);
+          const pc = await loadProjectContext(ctx, v.projectId);
+          return recordExport(ctx, pc, requireArtifactDef(v.code), v);
+        }),
+        myNotifications: action((ctx) => myNotifications(ctx, ctx.action.params as any)),
+        markNotificationsRead: action((ctx) => markNotificationsRead(ctx, values(ctx))),
         recordDissent: action(async (ctx) => {
           const v = values(ctx);
           const pc = await loadProjectContext(ctx, v.projectId);

@@ -19,6 +19,7 @@ import {
   validateArtifact,
 } from '../../shared';
 import { HttpError, type ProjectContext, currentUserId } from './access';
+import { notifyTransition } from './notify';
 
 const LIFECYCLE_HTTP: Record<LifecycleError['code'], number> = {
   FORBIDDEN: 403,
@@ -230,9 +231,23 @@ async function markDownstreamStale(
     if (target && (unconditional || refs[def.code] !== latest)) {
       await target.update({ stale: true, staleReason: reason }, { transaction });
       marked.push(code);
+    } else if (target?.get('stale') && (await readsCurrentUpstream(ctx, projectId, code, refs, transaction))) {
+      // An upstream reopened and re-locked without changes: nothing to re-check any more.
+      await target.update({ stale: false, staleReason: null }, { transaction });
     }
   }
   return marked;
+}
+
+/** Whether every upstream `code` read is still the version it would read now, and none is being edited. */
+async function readsCurrentUpstream(ctx: Context, projectId: number, code: string, refs: Record<string, number | null>, transaction: any) {
+  const def = getArtifactDef(code);
+  const rows = await ctx.db.getRepository('dz_artifacts').find({ filter: { projectId, code: { $in: def.dependsOn } }, transaction });
+  return def.dependsOn.every((dep) => {
+    const row = rows.find((r: any) => r.get('code') === dep);
+    if (!row) return refs[dep] == null;
+    return !isReopened(row) && readableVersionId(row, getArtifactDef(dep).stage === def.stage) === (refs[dep] ?? null);
+  });
 }
 
 const PLAN_BOOKS = ['S3-07', 'S3-08'];
@@ -302,8 +317,10 @@ export async function transitionArtifact(
     if (action === 'confirm' || action === 'forceLock') values.lockedVersionId = artifact.get('currentVersionId');
     await artifact.update(values, { transaction });
 
+    const bundled: string[] = [];
     for (const row of bundle) {
       if (row.get('status') !== 'pending_confirm') continue;
+      bundled.push(row.get('code'));
       await row.update({ status: 'locked', lockedVersionId: row.get('currentVersionId') }, { transaction });
       await audit(
         ctx,
@@ -325,6 +342,7 @@ export async function transitionArtifact(
       { code: def.code, action, reason, fromStatus: from, toStatus: to, rev: artifact.get('currentRev'), meta: { stale } },
       transaction,
     );
+    await notifyTransition(ctx, pc, def, action, { reason, rev: artifact.get('currentRev'), stale, bundled }, transaction);
     return { status: to, stale };
   });
 }

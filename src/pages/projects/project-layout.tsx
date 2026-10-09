@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import { Link, NavLink, Outlet, useParams } from "react-router";
 
 import { UserDropdown } from "@/components/app-shell/header";
+import { NotificationBell } from "@/components/dingze/notification-bell";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,8 @@ import type { ProjectContextValue } from "./project-context";
 const NAV = [
   { to: "overview", label: "工作台" },
   { to: "workspace", label: "咨询工作区" },
+  { to: "artifacts", label: "成果与定版" },
+  { to: "delivery", label: "交付" },
 ];
 
 export default function ProjectLayout() {
@@ -69,6 +72,7 @@ export default function ProjectLayout() {
               {PROJECT_ROLE_LABELS[overview.data.projectRole]}
             </span>
           ) : null}
+          <NotificationBell className="text-band-foreground hover:bg-white/10 hover:text-band-foreground" />
           <ThemeToggle className="border-white/25 bg-white/10 text-band-foreground hover:bg-white/20" />
           <UserDropdown />
         </div>

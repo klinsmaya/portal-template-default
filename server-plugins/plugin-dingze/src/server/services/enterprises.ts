@@ -4,6 +4,7 @@ import type { Context } from '@nocobase/actions';
 
 import { PROJECT_ROLE_LABELS, type ProjectRole } from '../../shared';
 import { HttpError, SYSTEM_ROLES, currentUserId, requireOps, systemAccess, userSpaceNames } from './access';
+import { notifyAssignment } from './notify';
 import { creator, insertUser } from './ops';
 
 const PROJECT_ROLES = Object.keys(PROJECT_ROLE_LABELS) as ProjectRole[];
@@ -131,8 +132,10 @@ export async function createProject(ctx: Context, input: ProjectInput) {
 
 async function upsertMembers(ctx: Context, projectId: number, spaceName: string, list: MemberInput[], transaction: any) {
   const repo = ctx.db.getRepository('dz_project_members');
+  const added: { userId: number; projectRole: ProjectRole; isNew: boolean }[] = [];
   for (const m of list) {
     const existing = await repo.findOne({ filter: { projectId, userId: m.userId }, transaction });
+    added.push({ userId: m.userId, projectRole: m.projectRole, isNew: !existing });
     if (existing) {
       await existing.update({ projectRole: m.projectRole, orgUnitId: m.orgUnitId ?? null }, { transaction });
     } else {
@@ -143,6 +146,8 @@ async function upsertMembers(ctx: Context, projectId: number, spaceName: string,
     }
   }
   await addUsersToSpace(ctx, spaceName, list.map((m) => m.userId), transaction);
+  const project = await ctx.db.getRepository('dz_projects').findOne({ filterByTk: projectId, transaction });
+  await notifyAssignment(ctx, project, added, transaction);
 }
 
 export async function setProjectMembers(ctx: Context, projectId: number, input: unknown) {

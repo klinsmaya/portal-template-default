@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { nextStep, workspacePath } from "@/lib/dingze/progress";
 import { useArtifactDetail, useSaveArtifact, useUpstreamPayloads } from "@/lib/dingze/queries";
+import { useRecordExport } from "@/lib/dingze/records-queries";
 
 import { EDITABLE_CODES, emptyPayload } from "@/lib/dingze/artifact-payloads";
 import { type ProposedChange, applyChanges } from "@/lib/dingze/changes";
@@ -81,6 +82,7 @@ function Workspace({ code }: { code: string }) {
   const [draft, setDraft] = useState<unknown>(serverPayload);
   const [baseRev, setBaseRev] = useState(serverRev);
   const dirty = JSON.stringify(draft) !== JSON.stringify(serverPayload);
+  const recordExport = useRecordExport(project);
 
   // Adopt the server version when it changes and nothing local is pending.
   useEffect(() => {
@@ -301,6 +303,7 @@ function Workspace({ code }: { code: string }) {
                 projectName={project.name}
                 upstream={upstream}
                 dirty={dirty}
+                onExported={recordExport}
               />
               <PlanBookExportButton
                 code={code}
@@ -311,6 +314,7 @@ function Workspace({ code }: { code: string }) {
                 year={project.year}
                 upstream={upstream}
                 dirty={dirty}
+                onExported={recordExport}
               />
               {!readOnly && EDITABLE_CODES.has(code) ? (
                 <Button

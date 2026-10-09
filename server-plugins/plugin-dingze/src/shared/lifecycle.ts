@@ -48,6 +48,26 @@ export type LifecycleAction =
   | 'forceLock'
   | 'forceReturn';
 
+/** Audit and history labels; `grantException` is the consultant's step exception. */
+export const ACTION_LABELS: Record<string, string> = {
+  save: '保存',
+  stepDone: '本步完成',
+  submitReview: '提交复核',
+  approve: '复核通过',
+  returnToEdit: '退回修改',
+  confirm: '企业确认定版',
+  reopen: '解锁重开',
+  forceLock: '强制定版',
+  forceReturn: '强制退回',
+  grantException: '开例外',
+};
+
+export const VERSION_KIND_LABELS: Record<string, string> = {
+  ai_draft: 'AI 初稿',
+  enterprise_edit: '企业修改',
+  consultant_revision: '咨询师修订',
+};
+
 export interface Actor {
   projectRole: ProjectRole | null;
   /** System-level consulting admin may force transitions with a reason. */

@@ -36,6 +36,8 @@ export const appRoutes = defineAppRoutes([
       { name: "project.overview", path: "overview", lazy: () => import("@/pages/projects/overview") },
       { name: "project.workspace", path: "workspace", lazy: () => import("@/pages/projects/workspace") },
       { name: "project.workspace.artifact", path: "workspace/:code", lazy: () => import("@/pages/projects/workspace") },
+      { name: "project.artifacts", path: "artifacts", lazy: () => import("@/pages/projects/artifacts") },
+      { name: "project.delivery", path: "delivery", lazy: () => import("@/pages/projects/delivery") },
     ],
   },
   {

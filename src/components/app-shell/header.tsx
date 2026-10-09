@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { NotificationBell } from "@/components/dingze/notification-bell";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +75,7 @@ function DesktopHeader() {
       </div>
       <div className="flex items-center gap-2">
         <SettingsLink />
+        <NotificationBell />
         <ThemeToggle />
         <UserDropdown />
       </div>
@@ -112,6 +114,7 @@ function MobileHeader() {
       <Brand logoClassName="h-6" />
       <div className="flex shrink-0 items-center gap-1">
         <SettingsLink className="size-9" />
+        <NotificationBell className="size-9" />
         <ThemeToggle className="size-9" />
         <UserDropdown />
       </div>

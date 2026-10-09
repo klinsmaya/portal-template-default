@@ -7,6 +7,7 @@ import { type ArtifactStatus, type CompanyPlanBook, type DeptPlanBook, emptyPlan
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/dingze/errors";
 import { downloadPlanBookDocx } from "@/lib/dingze/export/docx";
+import type { ExportInfo } from "@/lib/dingze/records-api";
 import { type PlanBookUpstream, buildCompanyPlanBook, buildDeptPlanBook, deptText } from "@/lib/dingze/plan-book";
 
 const safe = (name: string) => name.replace(/[\\/:*?"<>|]/g, "_");
@@ -21,6 +22,7 @@ export function PlanBookExportButton({
   year,
   upstream,
   dirty,
+  onExported,
 }: {
   code: string;
   payload: unknown;
@@ -30,6 +32,7 @@ export function PlanBookExportButton({
   year: number;
   upstream: Record<string, unknown>;
   dirty: boolean;
+  onExported?: (info: ExportInfo) => void;
 }) {
   const [pending, setPending] = useState(false);
   if ((code !== "S3-07" && code !== "S3-08") || rev === 0 || !payload) return null;
@@ -41,7 +44,9 @@ export function PlanBookExportButton({
     try {
       if (code === "S3-07") {
         const text = (payload as CompanyPlanBook).text ?? emptyPlanBookText();
-        await downloadPlanBookDocx(safe(`${enterprise}-${year}年度经营计划书-v${rev}.docx`), buildCompanyPlanBook({ enterprise, year, text, upstream: u }), draft);
+        const fileName = safe(`${enterprise}-${year}年度经营计划书-v${rev}.docx`);
+        await downloadPlanBookDocx(fileName, buildCompanyPlanBook({ enterprise, year, text, upstream: u }), draft);
+        onExported?.({ code, rev, format: "docx", fileName, draft });
       } else {
         const depts = (payload as DeptPlanBook).depts ?? [];
         if (depts.length === 0) {
@@ -51,11 +56,9 @@ export function PlanBookExportButton({
         for (const d of depts) {
           const { deptId, deptName } = d;
           const text = deptText(d);
-          await downloadPlanBookDocx(
-            safe(`${enterprise}-${deptName}-${year}年度经营计划书-v${rev}.docx`),
-            buildDeptPlanBook({ enterprise, year, dept: { deptId, deptName }, text, upstream: u }),
-            draft
-          );
+          const fileName = safe(`${enterprise}-${deptName}-${year}年度经营计划书-v${rev}.docx`);
+          await downloadPlanBookDocx(fileName, buildDeptPlanBook({ enterprise, year, dept: { deptId, deptName }, text, upstream: u }), draft);
+          onExported?.({ code, rev, format: "docx", fileName, draft });
         }
       }
       if (dirty) toast.info("已导出最近一次保存的版本，未保存的修改不在文件里");

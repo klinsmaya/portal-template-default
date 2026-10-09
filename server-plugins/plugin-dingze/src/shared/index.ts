@@ -5,3 +5,4 @@ export * from './board';
 export * from './measures';
 export * from './goals';
 export * from './actions';
+export * from './diff';

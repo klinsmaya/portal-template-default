@@ -312,9 +312,6 @@ function SidebarFooter() {
                 "keeps it reliable."
               )}
             </div>
-            <div className="mt-1 font-mono text-[10px] text-muted-foreground/70">
-              {__PORTAL_TEMPLATE_NAME__} v{__PORTAL_TEMPLATE_VERSION__}
-            </div>
           </div>
         )}
       </div>
