@@ -292,8 +292,30 @@ export async function projectOverview(ctx: Context, pc: ProjectContext) {
   const rows = await ctx.db.getRepository('dz_artifacts').find({ filter: { projectId } });
   const byCode = new Map(rows.map((r: any) => [r.get('code'), r]));
   const states = await loadStates(ctx, projectId);
+  // Departments and the project team feed RACI columns, undertakings and owner pickers.
+  const [orgUnits, members] = await Promise.all([
+    ctx.db.getRepository('dz_org_units').find({
+      filter: { enterpriseId: pc.project.get('enterpriseId') },
+      sort: ['sort', 'id'],
+    }),
+    ctx.db.getRepository('dz_project_members').find({ filter: { projectId }, appends: ['user'] }),
+  ]);
   return {
     project: pc.project.toJSON(),
+    orgUnits: orgUnits.map((o: any) => ({
+      id: o.get('id'),
+      name: o.get('name'),
+      kind: o.get('kind'),
+      parentId: o.get('parentId') ?? null,
+      headId: o.get('headId') ?? null,
+      sort: o.get('sort') ?? 0,
+    })),
+    team: members.map((m: any) => ({
+      userId: m.get('userId'),
+      nickname: m.get('user')?.get('nickname') || m.get('user')?.get('username') || '',
+      projectRole: m.get('projectRole'),
+      orgUnitId: m.get('orgUnitId') ?? null,
+    })),
     projectRole: pc.projectRole,
     isConsultAdmin: pc.access.isConsultAdmin,
     artifacts: ARTIFACTS.map((def) => {

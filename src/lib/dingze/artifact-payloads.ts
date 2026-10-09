@@ -1,4 +1,12 @@
 import {
+  emptyBudgetWorksheet,
+  emptyDecodeMap,
+  emptyDeptUndertakingTable,
+  emptyGoalTargets,
+  emptyKeyProjectList,
+  emptyPathSystem,
+  emptyRaciTable,
+  emptyScorecardSet,
   emptyIpoocDesign,
   emptyKpiBreakdown,
   emptyKpiScreening,
@@ -11,7 +19,10 @@ import {
 } from "@dingze/shared";
 
 /** Artifacts whose editor is available in this release. */
-export const EDITABLE_CODES = new Set(["S1-01", "M-MISSION", "M-VISION", "S1-02", "S1-03", "S1-04", "S1-05", "S1-06", "S1-07"]);
+export const EDITABLE_CODES = new Set([
+  "S1-01", "M-MISSION", "M-VISION", "S1-02", "S1-03", "S1-04", "S1-05", "S1-06", "S1-07",
+  "S2-03-T", "M-BUDGET", "S2-01", "S2-03", "S2-08", "S2-04", "S2-05", "S2-06", "S2-07",
+]);
 
 /** The blank skeleton a new artifact starts from. */
 export function emptyPayload(code: string, project: { primaryExpression: "house" | "sixfold"; year: number }): unknown {
@@ -34,6 +45,23 @@ export function emptyPayload(code: string, project: { primaryExpression: "house"
       return emptyStrategyKpiTable();
     case "S1-07":
       return emptyKpiBreakdown(project.year);
+    case "S2-03-T":
+      return emptyGoalTargets(project.year);
+    case "M-BUDGET":
+      return emptyBudgetWorksheet();
+    case "S2-01":
+      return emptyDecodeMap();
+    case "S2-03":
+    case "S2-06":
+      return emptyPathSystem();
+    case "S2-08":
+      return emptyKeyProjectList();
+    case "S2-04":
+      return emptyRaciTable();
+    case "S2-05":
+      return emptyDeptUndertakingTable();
+    case "S2-07":
+      return emptyScorecardSet();
     default:
       return null;
   }

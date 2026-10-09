@@ -379,11 +379,14 @@ function Workspace({ code }: { code: string }) {
                   upstream={upstream}
                   projectYear={project.year}
                   canChangePrimary={role === "ent_lead" || role === "lead_consultant"}
+                  keyProjectLevel={project.keyProjectLevel}
+                  orgUnits={overview.orgUnits ?? []}
+                  team={overview.team ?? []}
                 />
               ) : (
                 <Alert>
                   <AlertTitle>这张表的编辑器在后续里程碑交付</AlertTitle>
-                  <AlertDescription>定战略责的成果表已全部上线；定目标责、定行动责的成果表按计划在 M2–M3 交付。</AlertDescription>
+                  <AlertDescription>定战略责、定目标责的成果表已上线；定行动责的成果表按计划在 M3 交付。</AlertDescription>
                 </Alert>
               )}
 

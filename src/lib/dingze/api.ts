@@ -63,8 +63,26 @@ export type ArtifactOverview = {
   unlock: UnlockInfo;
 };
 
+export type ProjectOrgUnit = {
+  id: number;
+  name: string;
+  kind: "company" | "department" | "team";
+  parentId: number | null;
+  headId: number | null;
+  sort: number;
+};
+
+export type ProjectTeamMember = {
+  userId: number;
+  nickname: string;
+  projectRole: ProjectRole;
+  orgUnitId: number | null;
+};
+
 export type ProjectOverview = {
   project: Omit<ProjectSummary, "projectRole" | "enterprise">;
+  orgUnits: ProjectOrgUnit[];
+  team: ProjectTeamMember[];
   projectRole: ProjectRole | null;
   isConsultAdmin: boolean;
   artifacts: ArtifactOverview[];

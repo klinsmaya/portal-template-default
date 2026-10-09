@@ -139,7 +139,7 @@ export const ARTIFACTS: ArtifactDef[] = [
   {
     code: 'S2-05', specId: 'S2-05', name: '部门目标承接表', stage: 'goal',
     task: '纵向到底，目标层层击穿', step: '步骤 2 分部门', bookRef: '表 3-20',
-    priority: 'P0', editor: 'table', unlockAfter: ['S2-04'], dependsOn: ['S2-03', 'S2-04'],
+    priority: 'P0', editor: 'table', unlockAfter: ['S2-04'], dependsOn: ['S2-03', 'S2-04', 'S2-08'],
   },
   {
     code: 'S2-06', specId: 'S2-06', name: '部门级目标路径系统图 / 表', stage: 'goal',

@@ -19,6 +19,24 @@ import {
   validateStrategyMap,
   validateVisionWorksheet,
 } from './measures';
+import {
+  type BudgetWorksheet,
+  type DecodeMap,
+  type DeptUndertakingTable,
+  type GoalPathSystem,
+  type GoalTargets,
+  type KeyProjectList,
+  type RaciTable,
+  type ScorecardSet,
+  validateBudgetWorksheet,
+  validateDecodeMap,
+  validateDeptUndertaking,
+  validateGoalPathSystem,
+  validateGoalTargets,
+  validateKeyProjects,
+  validateRaciTable,
+  validateScorecards,
+} from './goals';
 
 export type IssueLevel = 'error' | 'warning';
 
@@ -274,11 +292,29 @@ export function validateArtifact(code: string, payload: unknown, upstream: Recor
       return validateMissionWorksheet(payload as MissionWorksheet);
     case 'M-VISION':
       return validateVisionWorksheet(payload as VisionWorksheet);
-    case 'S2-03':
-    case 'S2-06':
-      return validatePathSystem(payload as PathSystem);
+    case 'S2-03-T':
+      return validateGoalTargets(payload as GoalTargets);
+    case 'M-BUDGET':
+      return validateBudgetWorksheet(payload as BudgetWorksheet);
+    case 'S2-01':
+      return validateDecodeMap(payload as DecodeMap, upstream['S2-03-T'] as GoalTargets | undefined);
+    case 'S2-03': {
+      const goals = ((upstream['S2-03-T'] as GoalTargets | undefined)?.goals ?? []).map((g) => ({ id: g.id, label: g.task || g.metric }));
+      return validateGoalPathSystem(payload as GoalPathSystem, goals);
+    }
+    case 'S2-06': {
+      const rows = (upstream['S2-05'] as DeptUndertakingTable | undefined)?.rows ?? [];
+      const goals = rows.map((r) => ({ id: r.id, label: `${r.deptName} · ${r.task}` }));
+      return validateGoalPathSystem(payload as GoalPathSystem, goals, '部门目标');
+    }
+    case 'S2-08':
+      return validateKeyProjects(payload as KeyProjectList);
     case 'S2-04':
-      return validateRaci(payload as RaciMatrix);
+      return validateRaciTable(payload as RaciTable);
+    case 'S2-05':
+      return validateDeptUndertaking(payload as DeptUndertakingTable, upstream['S2-04'] as RaciTable | undefined);
+    case 'S2-07':
+      return validateScorecards(payload as ScorecardSet);
     default:
       return [];
   }

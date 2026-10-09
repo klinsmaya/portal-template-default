@@ -41,11 +41,47 @@ describe("artifact export sheets", () => {
   });
 
   it("has nothing to export for unknown codes or empty payloads", () => {
-    expect(artifactSheets("S2-04", { a: 1 })).toEqual([]);
+    expect(artifactSheets("S3-02", { a: 1 })).toEqual([]);
     expect(artifactSheets("S1-02", null)).toEqual([]);
   });
 
   it("builds file names without characters Windows rejects", () => {
     expect(exportFileName("DZ/测试", "S1-07", "战略 KPI 3—5 年年度分解表", 3)).toBe("DZ_测试-S1-07-战略 KPI 3—5 年年度分解表-v3.xlsx");
+  });
+});
+
+describe("path system export (表 3-9 / 表 3-10)", () => {
+  const goals = { year: 2026, strategyReview: "", lastPeriodIssues: "", goals: [{ id: "g1", purpose: "", task: "提升售气量", metric: "售气量", value: "1100 万方", unit: "", perspective: "financial" as const, sourceRowId: null }] };
+  const node = (id: string, parentId: string | null, level: number, path: string, value: string, perspective?: "financial" | "customer") => ({
+    id,
+    parentId,
+    goalId: parentId ? null : "g1",
+    level,
+    path,
+    metric: "销量",
+    value,
+    amount: null,
+    unit: "",
+    perspective,
+  });
+  const system = {
+    nodes: [
+      node("a", null, 1, "车用气增收", "800", "financial"),
+      node("b", "a", 2, "物流车队", "500"),
+      node("c", "a", 2, "网约车", "300"),
+      node("d", null, 1, "工业点供", "300", "customer"),
+    ],
+  };
+
+  it("puts one row per leaf with goal and parent cells merged over their leaves", () => {
+    const [tree, decode] = artifactSheets("S2-03", system, { "S2-03-T": goals });
+    expect(tree.columns.map((c) => c.header)).toEqual(["目标", "目标值", "一级路径", "衡量指标", "指标值", "二级路径", "衡量指标", "指标值"]);
+    expect(tree.rows).toEqual([
+      ["提升售气量", "售气量 1100 万方", "车用气增收", "销量", 800, "物流车队", "销量", 500],
+      [null, null, null, null, null, "网约车", "销量", 300],
+      [null, null, "工业点供", "销量", 300, null, null, null],
+    ]);
+    expect(tree.merges).toEqual(expect.arrayContaining([[0, 2, 1, 2], [0, 0, 2, 0], [0, 1, 2, 1]]));
+    expect(decode.rows.map((r) => r[0])).toEqual(["财务", null, "客户"]);
   });
 });
