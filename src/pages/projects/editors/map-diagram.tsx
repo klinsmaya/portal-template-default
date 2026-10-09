@@ -1,6 +1,6 @@
 import type { StrategyMap } from "@dingze/shared";
 
-import { LANE_LABEL_WIDTH, layoutStrategyMap } from "@/lib/dingze/map-layout";
+import { LANE_LABEL_WIDTH, layoutStrategyMap, linkLines } from "@/lib/dingze/map-layout";
 
 const DIAGRAM_WIDTH = 960;
 
@@ -31,39 +31,13 @@ export function MapDiagram({ map, label = "战略地图" }: { map: StrategyMap; 
             <line x1={LANE_LABEL_WIDTH} x2={LANE_LABEL_WIDTH} y1={lane.y} y2={lane.y + 120} stroke="var(--border)" />
           </g>
         ))}
-        {(map.links ?? []).map((link) => {
-          const from = byId.get(link.from);
-          const to = byId.get(link.to);
-          if (!from || !to) return null;
-          if (link.kind === "synergy") {
-            const [a, b] = from.x < to.x ? [from, to] : [to, from];
-            return (
-              <line
-                key={link.id}
-                x1={a.x + a.w}
-                y1={a.y + a.h / 2}
-                x2={b.x}
-                y2={b.y + b.h / 2}
-                stroke="var(--gold)"
-                strokeWidth={2}
-                strokeDasharray="6 4"
-              />
-            );
-          }
-          const upward = to.y < from.y;
-          return (
-            <line
-              key={link.id}
-              x1={from.x + from.w / 2}
-              y1={upward ? from.y : from.y + from.h}
-              x2={to.x + to.w / 2}
-              y2={upward ? to.y + to.h : to.y}
-              stroke="var(--brand)"
-              strokeWidth={1.5}
-              markerEnd="url(#map-arrow)"
-            />
-          );
-        })}
+        {linkLines(map.links, byId).map((l) =>
+          l.kind === "synergy" ? (
+            <line key={l.id} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="var(--gold)" strokeWidth={2} strokeDasharray="6 4" />
+          ) : (
+            <line key={l.id} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="var(--brand)" strokeWidth={1.5} markerEnd="url(#map-arrow)" />
+          )
+        )}
         {nodes.map((node) => (
           <foreignObject key={node.id} x={node.x} y={node.y} width={node.w} height={node.h}>
             <div className="flex h-full items-center justify-center rounded-lg border-2 border-brand bg-card px-2 text-center text-xs leading-snug font-semibold text-brand">

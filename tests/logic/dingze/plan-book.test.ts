@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { emptyCharter, emptyPlanBookText, planNode, resourceRow } from "@dingze/shared";
+import { emptyCharter, emptyPlanBookText, emptyStrategyContent, planNode, resourceRow } from "@dingze/shared";
 
 import { buildCompanyPlanBook, buildDeptPlanBook } from "@/lib/dingze/plan-book";
 
@@ -44,6 +44,25 @@ describe("plan books", () => {
     expect(kpi).toEqual({ kind: "table", headers: ["战略主题", "战略 KPI", "本年度目标"], rows: [["做强车用气", "车用气销量", "1100 万方"]] });
     const resources = book.chapters[5].blocks[0];
     expect(resources.kind === "table" && resources.rows[0]).toEqual(["物流车队客户拓展", "财务", "80 万元", "", "30 万元（重大）", "", ""]);
+  });
+
+  it("puts the strategy house and map into chapter one as figures", () => {
+    const plain = buildCompanyPlanBook({ enterprise: "DZ", year: 2026, text: emptyPlanBookText(), upstream });
+    expect(plain.chapters[0].blocks.some((b) => b.kind === "figure")).toBe(false);
+    const book = buildCompanyPlanBook({
+      enterprise: "DZ",
+      year: 2026,
+      text: emptyPlanBookText(),
+      upstream: {
+        ...upstream,
+        "S1-01": { ...emptyStrategyContent("house"), mission: "让能源更清洁" },
+        "S1-02": { objectives: [{ id: "o1", perspective: "financial" as const, title: "营收 10 亿", note: "" }], links: [] },
+      },
+    });
+    const figures = book.chapters[0].blocks.filter((b) => b.kind === "figure");
+    expect(figures.map((f) => f.kind === "figure" && f.caption)).toEqual(["图 1-1 战略屋（S1-01）", "图 1-2 战略地图（S1-02）"]);
+    expect(figures[0].kind === "figure" && figures[0].diagram.svg).toContain("让能源更清洁");
+    expect(book.chapters[0].blocks.findIndex((b) => b.kind === "figure")).toBeLessThan(book.chapters[0].blocks.findIndex((b) => b.kind === "heading" && b.text.startsWith("1.2")));
   });
 
   it("keeps a department book to what that department leads", () => {

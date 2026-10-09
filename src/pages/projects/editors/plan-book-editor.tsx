@@ -32,6 +32,13 @@ function BlockView({ block }: { block: Block }) {
   if (block.kind === "heading") return <div className="mt-2 text-sm font-semibold text-brand">{block.text}</div>;
   if (block.kind === "note") return <p className="text-xs text-muted-foreground italic">{block.text}</p>;
   if (block.kind === "text") return <p className="text-sm whitespace-pre-wrap">{block.text}</p>;
+  if (block.kind === "figure")
+    return (
+      <figure className="flex flex-col items-center gap-1 rounded-lg border bg-white p-2">
+        <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(block.diagram.svg)}`} alt={block.caption} className="w-full max-w-2xl" />
+        <figcaption className="text-xs text-muted-foreground">{block.caption}</figcaption>
+      </figure>
+    );
   if (block.rows.length === 0) return <p className="text-xs text-muted-foreground">（无）</p>;
   return (
     <div className="overflow-x-auto rounded-lg border">
@@ -95,6 +102,10 @@ function BookBody({
                   <TextCell key={f.key} label={`${chapter.title} ${f.key}`} multiline placeholder={f.hint} value={text[f.key] ?? ""} onChange={(v) => onText({ ...text, [f.key]: v })} readOnly={readOnly} className="min-h-24" />
                 ))}
                 {chapter.no === "八" ? chapter.blocks.map((b, i) => <BlockView key={i} block={b} />) : null}
+                {/* 战略屋 / 战略地图 go into chapter one of the Word file; show them here too. */}
+                {chapter.blocks.filter((b) => b.kind === "figure").map((b, i) => (
+                  <BlockView key={`figure-${i}`} block={b} />
+                ))}
               </div>
             ) : (
               <div className="flex flex-col gap-2">

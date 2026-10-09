@@ -13,11 +13,15 @@ import {
   RESOURCE_CATEGORIES,
   type ResourceMatch,
   type ScorecardSet,
+  type StrategyContent,
   type StrategyKpiTable,
+  type StrategyMap,
   currentYearTargets,
   orderedPaths,
   priorityScore,
 } from "@dingze/shared";
+
+import { type SvgDiagram, strategyContentSvg, strategyMapSvg } from "./diagram-svg";
 
 // A plan book as plain blocks: entered chapters come from the payload, same-source chapters
 // are assembled from upstream tables. The workspace preview and the Word export share it,
@@ -27,13 +31,16 @@ export type Block =
   | { kind: "text"; text: string }
   | { kind: "heading"; text: string }
   | { kind: "table"; headers: string[]; rows: string[][] }
-  | { kind: "note"; text: string };
+  | { kind: "note"; text: string }
+  | { kind: "figure"; caption: string; diagram: SvgDiagram };
 
 export type Chapter = { no: string; title: string; source: "same" | "entered"; blocks: Block[] };
 
 export type PlanBookModel = { title: string; subtitle: string; chapters: Chapter[] };
 
 export type PlanBookUpstream = {
+  "S1-01"?: StrategyContent;
+  "S1-02"?: StrategyMap;
   "S1-06"?: StrategyKpiTable;
   "S1-07"?: KpiBreakdown;
   "S2-03-T"?: GoalTargets;
@@ -127,6 +134,20 @@ function charterAppendix(c: ProjectCharter): Block[] {
 }
 
 /** S3-07: the company plan book. */
+/** The strategy house (or 六分法) and the strategy map, when those tables have content. */
+function strategyFigures(u: PlanBookUpstream): Block[] {
+  const figures: Block[] = [];
+  const content = u["S1-01"];
+  if (content) {
+    const house = content.primary !== "sixfold";
+    figures.push({ kind: "figure", caption: `图 1-1 ${house ? "战略屋" : "战略简约六分法表"}（S1-01）`, diagram: strategyContentSvg(content) });
+  }
+  if (u["S1-02"]?.objectives?.length) {
+    figures.push({ kind: "figure", caption: `图 1-${figures.length + 1} 战略地图（S1-02）`, diagram: strategyMapSvg(u["S1-02"]) });
+  }
+  return figures;
+}
+
 export function buildCompanyPlanBook(params: {
   enterprise: string;
   year: number;
@@ -172,6 +193,7 @@ export function buildCompanyPlanBook(params: {
   chapters[0].blocks = [
     { kind: "heading", text: "1.1 总体战略目标与愿景承接" },
     text(t.summary),
+    ...strategyFigures(u),
     { kind: "heading", text: "1.2 本年度关键 KPI" },
     targets.length
       ? { kind: "table", headers: ["战略主题", "战略 KPI", "本年度目标"], rows: targets.map((x) => [x.theme, x.name, `${x.value} ${x.unit}`.trim()]) }

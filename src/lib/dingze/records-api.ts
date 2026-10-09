@@ -44,7 +44,9 @@ export async function getVersionDiff(projectId: number, spaceName: string, code:
 }
 
 export type DeliveryArtifact = { code: string; status: ArtifactStatus; rev: number; locked: boolean; payload: unknown };
-export type ExportRecord = { id: number; code: string; rev: number; format: "xlsx" | "docx"; fileName: string; draft: boolean; at: string; by: string };
+export type ExportFormat = "xlsx" | "docx" | "svg" | "png";
+
+export type ExportRecord = { id: number; code: string; rev: number; format: ExportFormat; fileName: string; draft: boolean; at: string; by: string };
 
 export async function getDeliveryBundle(projectId: number, spaceName: string) {
   return nocobaseClient.action<{ artifacts: DeliveryArtifact[]; exports: ExportRecord[] }>("dingze", "deliveryBundle", {
@@ -54,7 +56,7 @@ export async function getDeliveryBundle(projectId: number, spaceName: string) {
   });
 }
 
-export type ExportInfo = { code: string; rev: number; format: "xlsx" | "docx"; fileName: string; draft: boolean };
+export type ExportInfo = { code: string; rev: number; format: ExportFormat; fileName: string; draft: boolean };
 
 export async function recordExport(projectId: number, spaceName: string, info: ExportInfo) {
   return nocobaseClient.action("dingze", "recordExport", { body: { projectId, ...info }, headers: spaceHeaders(spaceName) });

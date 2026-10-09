@@ -164,7 +164,7 @@ export async function deliveryBundle(ctx: Context, pc: ProjectContext) {
 }
 
 export async function recordExport(ctx: Context, pc: ProjectContext, def: ArtifactDef, input: { rev?: unknown; format?: unknown; fileName?: unknown; draft?: unknown }) {
-  const format = input.format === 'docx' ? 'docx' : input.format === 'xlsx' ? 'xlsx' : null;
+  const format = ['docx', 'xlsx', 'svg', 'png'].includes(String(input.format)) ? String(input.format) : null;
   if (!format) throw new HttpError(400, '未知的导出格式');
   await ctx.db.getRepository('dz_exports').create({
     values: {

@@ -1,3 +1,4 @@
+import { diagramPng } from "../diagram-image";
 import type { PlanBookModel } from "../plan-book";
 
 const BRAND = "0C3D52";
@@ -9,6 +10,7 @@ export async function downloadPlanBookDocx(fileName: string, model: PlanBookMode
     BorderStyle,
     Document,
     HeadingLevel,
+    ImageRun,
     Packer,
     Paragraph,
     ShadingType,
@@ -57,6 +59,27 @@ export async function downloadPlanBookDocx(fileName: string, model: PlanBookMode
         for (const line of block.text.split("\n")) {
           children.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: line, italics: block.kind === "note", color: block.kind === "note" ? "5B6B73" : undefined })] }));
         }
+      } else if (block.kind === "figure") {
+        // Word 2016+ shows the vector SVG; older readers fall back to the PNG.
+        const png = await (await diagramPng(block.diagram)).arrayBuffer();
+        const width = 600;
+        const height = Math.round((block.diagram.height / block.diagram.width) * width);
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 120 },
+            children: [
+              new ImageRun({
+                type: "svg",
+                data: new TextEncoder().encode(block.diagram.svg),
+                fallback: { type: "png", data: png },
+                transformation: { width, height },
+                altText: { name: block.caption, title: block.caption, description: block.caption },
+              }),
+            ],
+          }),
+          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: block.caption, size: 18, color: "5B6B73" })] })
+        );
       } else if (block.rows.length) {
         children.push(
           new Table({

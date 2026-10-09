@@ -40,6 +40,7 @@ import { errorMessage } from "@/lib/dingze/errors";
 
 import { ArtifactActions, DissentList } from "./components/artifact-actions";
 import { CoachPanel } from "./components/coach-panel";
+import { DiagramExportButton } from "./components/diagram-export";
 import { ExportButton } from "./components/export-button";
 import { PlanBookExportButton } from "./components/plan-book-export";
 import { StepBar } from "./components/step-bar";
@@ -383,6 +384,16 @@ function Workspace({ code }: { code: string }) {
                 enterprise={project.enterprise?.shortName ?? "企业"}
                 projectName={project.name}
                 upstream={upstream}
+                dirty={dirty}
+                onExported={recordExport}
+              />
+              <DiagramExportButton
+                code={code}
+                name={def.name}
+                payload={artifact?.currentVersion?.payload}
+                rev={artifact?.currentRev ?? 0}
+                status={status}
+                enterprise={project.enterprise?.shortName ?? "企业"}
                 dirty={dirty}
                 onExported={recordExport}
               />
