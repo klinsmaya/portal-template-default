@@ -142,6 +142,11 @@ export interface ArtifactState {
   stale?: boolean;
   /** Set when a consultant granted a step exception for this artifact. */
   exception?: boolean;
+  /**
+   * The artifact reached “本步完成” at least once. A reopened table stays unlocked for its
+   * downstream tables, which are flagged “上游已变更” instead of being locked again.
+   */
+  everCompleted?: boolean;
 }
 
 export type StateMap = Partial<Record<string, ArtifactState>>;
@@ -149,7 +154,7 @@ export type StateMap = Partial<Record<string, ArtifactState>>;
 const REACHED_STEP_DONE: ArtifactStatus[] = ['step_done', 'in_review', 'pending_confirm', 'locked', 'archived'];
 
 export function hasReachedStepDone(state: ArtifactState | undefined): boolean {
-  return !!state && (REACHED_STEP_DONE.includes(state.status) || !!state.exception);
+  return !!state && (REACHED_STEP_DONE.includes(state.status) || !!state.exception || !!state.everCompleted);
 }
 
 export function isStageComplete(stage: StageKey, states: StateMap): boolean {

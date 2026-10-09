@@ -1,0 +1,147 @@
+import { nocobaseClient } from "@nocobase/portal-sdk/client";
+
+import type {
+  ArtifactStatus,
+  LifecycleAction,
+  ProjectRole,
+  UnlockInfo,
+} from "@dingze/shared";
+
+// Every 定责 request carries the enterprise space it targets (multi-space plugin).
+// Writes must name exactly one space; reads across enterprises list them in x-spaces-view.
+
+export type MySpaces = {
+  spaces: { name: string; title: string }[];
+  defaultSpaceName?: string | null;
+  viewableSpaceNames?: string[];
+};
+
+export function spaceHeaders(spaceName: string, viewSpaceNames?: string[]) {
+  return {
+    "x-spaces": spaceName,
+    ...(viewSpaceNames?.length
+      ? { "x-spaces-view": viewSpaceNames.join(",") }
+      : {}),
+  };
+}
+
+export async function getMySpaces(): Promise<MySpaces> {
+  return nocobaseClient.request<MySpaces>("spaces:my");
+}
+
+export type ProjectSummary = {
+  id: number;
+  name: string;
+  year: number;
+  scene: "camp" | "inhouse";
+  primaryExpression: "house" | "sixfold";
+  keyProjectLevel: 1 | 2;
+  scheduleScale: "month" | "quarter";
+  status: string;
+  spaceName: string;
+  enterprise?: { id: number; name: string; shortName: string };
+  projectRole: ProjectRole | null;
+};
+
+export async function listMyProjects(spaces: MySpaces): Promise<ProjectSummary[]> {
+  const names = spaces.spaces.map((s) => s.name);
+  if (names.length === 0) return [];
+  return nocobaseClient.action<ProjectSummary[]>("dingze", "myProjects", {
+    method: "GET",
+    headers: spaceHeaders(names[0], names),
+  });
+}
+
+export type ArtifactOverview = {
+  code: string;
+  status: ArtifactStatus;
+  stale: boolean;
+  staleReason: string | null;
+  exception: boolean;
+  currentRev: number;
+  updatedAt: string | null;
+  unlock: UnlockInfo;
+};
+
+export type ProjectOverview = {
+  project: Omit<ProjectSummary, "projectRole" | "enterprise">;
+  projectRole: ProjectRole | null;
+  isConsultAdmin: boolean;
+  artifacts: ArtifactOverview[];
+};
+
+export async function getProjectOverview(projectId: number, spaceName: string) {
+  return nocobaseClient.action<ProjectOverview>("dingze", "projectOverview", {
+    method: "GET",
+    query: { projectId },
+    headers: spaceHeaders(spaceName),
+  });
+}
+
+export type ArtifactVersion = {
+  id: number;
+  rev: number;
+  kind: "ai_draft" | "enterprise_edit" | "consultant_revision";
+  payload: unknown;
+  note?: string | null;
+  createdAt: string;
+  createdById?: number;
+};
+
+export type ArtifactDetail = {
+  code: string;
+  unlock: UnlockInfo;
+  projectRole: ProjectRole | null;
+  artifact: null | {
+    id: number;
+    status: ArtifactStatus;
+    stale: boolean;
+    staleReason: string | null;
+    exception: boolean;
+    currentRev: number;
+    currentVersion?: ArtifactVersion | null;
+    stepDoneVersion?: ArtifactVersion | null;
+    lockedVersion?: ArtifactVersion | null;
+  };
+  dissents: { id: number; content: string; createdAt: string; createdBy?: { nickname?: string } }[];
+};
+
+export async function getArtifactDetail(projectId: number, spaceName: string, code: string) {
+  return nocobaseClient.action<ArtifactDetail>("dingze", "artifactDetail", {
+    method: "GET",
+    query: { projectId, code },
+    headers: spaceHeaders(spaceName),
+  });
+}
+
+export async function saveArtifact(
+  spaceName: string,
+  values: { projectId: number; code: string; payload: unknown; baseRev: number; note?: string; fromProposalId?: number }
+) {
+  return nocobaseClient.action<{ status: ArtifactStatus; rev: number; versionId: number }>(
+    "dingze",
+    "saveArtifact",
+    { body: values, headers: spaceHeaders(spaceName) }
+  );
+}
+
+export async function transitionArtifact(
+  spaceName: string,
+  values: { projectId: number; code: string; action: Exclude<LifecycleAction, "save">; reason?: string }
+) {
+  return nocobaseClient.action<{ status: ArtifactStatus; stale: string[] }>(
+    "dingze",
+    "transition",
+    { body: values, headers: spaceHeaders(spaceName) }
+  );
+}
+
+export async function recordDissent(
+  spaceName: string,
+  values: { projectId: number; code: string; content: string }
+) {
+  return nocobaseClient.action("dingze", "recordDissent", {
+    body: values,
+    headers: spaceHeaders(spaceName),
+  });
+}

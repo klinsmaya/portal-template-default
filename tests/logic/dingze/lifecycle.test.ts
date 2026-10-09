@@ -108,6 +108,11 @@ describe("unlocking", () => {
     expect(unlockInfo(getArtifactDef("S2-03-T"), states).waitingFor).toContain("上一阶段");
   });
 
+  it("keeps downstream tables open while a completed table is reopened", () => {
+    const states: StateMap = { "S1-01": { status: "in_progress", everCompleted: true } };
+    expect(unlockInfo(getArtifactDef("S1-02"), states).unlocked).toBe(true);
+  });
+
   it("lets a consultant step exception stand in for step done", () => {
     const states: StateMap = { "S1-01": { status: "in_progress", exception: true } };
     expect(unlockInfo(getArtifactDef("S1-02"), states).unlocked).toBe(true);

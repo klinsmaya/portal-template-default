@@ -1,0 +1,348 @@
+import type { Context } from '@nocobase/actions';
+
+import {
+  ARTIFACTS,
+  type ArtifactDef,
+  type ArtifactStatus,
+  type LifecycleAction,
+  LifecycleError,
+  type StateMap,
+  CONSULTANTS,
+  getArtifactDef,
+  hasBlockingIssues,
+  isArtifactCode,
+  nextStatus,
+  requiresValidation,
+  staleTargets,
+  unlockInfo,
+  validateArtifact,
+} from '../../shared';
+import { HttpError, type ProjectContext, currentUserId } from './access';
+
+const LIFECYCLE_HTTP: Record<LifecycleError['code'], number> = {
+  FORBIDDEN: 403,
+  INVALID_STATE: 409,
+  REASON_REQUIRED: 400,
+  LOCKED_STEP: 409,
+  VALIDATION_FAILED: 422,
+};
+
+export function toHttpError(error: unknown): unknown {
+  if (error instanceof LifecycleError) return new HttpError(LIFECYCLE_HTTP[error.code], error.message, error.code);
+  return error;
+}
+
+export function requireArtifactDef(code: unknown): ArtifactDef {
+  if (typeof code !== 'string' || !isArtifactCode(code)) throw new HttpError(400, '未知的成果编号');
+  return getArtifactDef(code);
+}
+
+export async function loadStates(ctx: Context, projectId: number, transaction?: any): Promise<StateMap> {
+  const rows = await ctx.db.getRepository('dz_artifacts').find({ filter: { projectId }, transaction });
+  const states: StateMap = {};
+  for (const row of rows) {
+    states[row.get('code') as string] = {
+      status: row.get('status') as ArtifactStatus,
+      stale: !!row.get('stale'),
+      exception: !!row.get('exception'),
+      everCompleted: !!row.get('stepDoneVersionId'),
+    };
+  }
+  return states;
+}
+
+async function audit(
+  ctx: Context,
+  pc: ProjectContext,
+  values: { code?: string; action: string; reason?: string; fromStatus?: string; toStatus?: string; rev?: number; meta?: unknown },
+  transaction: any,
+) {
+  await ctx.db.getRepository('dz_audit_events').create({
+    values: { ...values, projectId: pc.project.get('id'), spaceName: pc.spaceName },
+    context: ctx,
+    transaction,
+  });
+}
+
+async function ensureArtifact(ctx: Context, pc: ProjectContext, code: string, transaction: any) {
+  const repo = ctx.db.getRepository('dz_artifacts');
+  const projectId = pc.project.get('id');
+  const existing = await repo.findOne({ filter: { projectId, code }, transaction });
+  if (existing) return existing;
+  return repo.create({
+    values: { projectId, code, status: 'not_started', spaceName: pc.spaceName },
+    context: ctx,
+    transaction,
+  });
+}
+
+/**
+ * The version a downstream artifact should read from `upstream`: inside the same stage the
+ * “本步完成” version is enough (Q10); across stages only the Locked version counts (Q1).
+ */
+function readableVersionId(upstream: any, sameStage: boolean): number | null {
+  if (!upstream) return null;
+  const locked = upstream.get('lockedVersionId');
+  if (!sameStage) return locked ?? null;
+  return upstream.get('stepDoneVersionId') ?? locked ?? null;
+}
+
+/** An upstream that had been completed and is now being edited again after a reopen. */
+function isReopened(row: any): boolean {
+  return !!row && !!row.get('stepDoneVersionId') && row.get('status') === 'in_progress';
+}
+
+async function upstreamState(ctx: Context, projectId: number, def: ArtifactDef, transaction: any) {
+  const refs: Record<string, number | null> = {};
+  const reopened: string[] = [];
+  if (def.dependsOn.length === 0) return { refs, reopened };
+  const rows = await ctx.db.getRepository('dz_artifacts').find({
+    filter: { projectId, code: { $in: def.dependsOn } },
+    transaction,
+  });
+  for (const code of def.dependsOn) {
+    const row = rows.find((r: any) => r.get('code') === code);
+    refs[code] = readableVersionId(row, getArtifactDef(code).stage === def.stage);
+    if (isReopened(row)) reopened.push(code);
+  }
+  return { refs, reopened };
+}
+
+export async function artifactDetail(ctx: Context, pc: ProjectContext, def: ArtifactDef) {
+  const projectId = pc.project.get('id');
+  const states = await loadStates(ctx, projectId);
+  const artifact = await ctx.db.getRepository('dz_artifacts').findOne({
+    filter: { projectId, code: def.code },
+    appends: ['currentVersion', 'stepDoneVersion', 'lockedVersion'],
+  });
+  const dissents = artifact
+    ? await ctx.db.getRepository('dz_dissents').find({
+        filter: { projectId, code: def.code },
+        appends: ['createdBy'],
+        sort: ['-createdAt'],
+      })
+    : [];
+  return {
+    code: def.code,
+    unlock: unlockInfo(def, states),
+    projectRole: pc.projectRole,
+    artifact: artifact?.toJSON() ?? null,
+    dissents: dissents.map((d: any) => d.toJSON()),
+  };
+}
+
+export interface SaveInput {
+  payload: unknown;
+  baseRev: number;
+  note?: string;
+  /** Set when the content comes from accepting an AI proposal. */
+  fromProposalId?: number;
+}
+
+export async function saveArtifact(ctx: Context, pc: ProjectContext, def: ArtifactDef, input: SaveInput) {
+  if (input.payload === undefined || input.payload === null) throw new HttpError(400, '缺少成果内容');
+  const projectId = pc.project.get('id');
+  const states = await loadStates(ctx, projectId);
+  const unlock = unlockInfo(def, states);
+  if (!unlock.unlocked && !states[def.code]?.exception) throw new HttpError(409, unlock.waitingFor ?? '这一步尚未解锁', 'LOCKED_STEP');
+
+  return ctx.db.sequelize.transaction(async (transaction: any) => {
+    const artifact = await ensureArtifact(ctx, pc, def.code, transaction);
+    const currentRev = artifact.get('currentRev') as number;
+    if (Number(input.baseRev) !== currentRev) {
+      throw new HttpError(409, '这份成果刚被其他人更新过，请刷新后再改', 'CONFLICT', { currentRev });
+    }
+    const from = artifact.get('status') as ArtifactStatus;
+    const to = nextStatus('save', from, pc.actor);
+    const isConsultant = !!pc.projectRole && CONSULTANTS.includes(pc.projectRole);
+    const kind = input.fromProposalId ? 'ai_draft' : isConsultant ? 'consultant_revision' : 'enterprise_edit';
+    const upstream = await upstreamState(ctx, projectId, def, transaction);
+    const version = await ctx.db.getRepository('dz_artifact_versions').create({
+      values: {
+        artifactId: artifact.get('id'),
+        projectId,
+        code: def.code,
+        rev: currentRev + 1,
+        kind,
+        payload: input.payload,
+        upstreamRefs: upstream.refs,
+        note: input.note,
+        spaceName: pc.spaceName,
+      },
+      context: ctx,
+      transaction,
+    });
+    // Saving re-reads the latest upstream versions, which resolves “上游已变更” unless an
+    // upstream has been reopened and is still being edited.
+    const stillStale = upstream.reopened.length > 0;
+    await artifact.update(
+      {
+        status: to,
+        currentRev: currentRev + 1,
+        currentVersionId: version.get('id'),
+        stale: stillStale,
+        staleReason: stillStale
+          ? artifact.get('staleReason') ??
+            `${upstream.reopened.map((c) => getArtifactDef(c).specId).join('、')} 已解锁重开，正在修改`
+          : null,
+      },
+      { transaction },
+    );
+    if (input.fromProposalId) {
+      await ctx.db.getRepository('dz_proposals').update({
+        filter: { id: input.fromProposalId, projectId, status: 'pending' },
+        values: { status: 'accepted', decidedById: currentUserId(ctx), decidedAt: new Date() },
+        transaction,
+      });
+    }
+    await audit(ctx, pc, { code: def.code, action: 'save', fromStatus: from, toStatus: to, rev: currentRev + 1, meta: { kind } }, transaction);
+    return { status: to, rev: currentRev + 1, versionId: version.get('id') };
+  });
+}
+
+const PROPAGATING: LifecycleAction[] = ['stepDone', 'confirm', 'forceLock', 'reopen', 'forceReturn'];
+
+async function markDownstreamStale(
+  ctx: Context,
+  pc: ProjectContext,
+  def: ArtifactDef,
+  reason: string,
+  unconditional: boolean,
+  transaction: any,
+) {
+  const projectId = pc.project.get('id');
+  const states = await loadStates(ctx, projectId, transaction);
+  const targets = staleTargets(def.code, states);
+  if (targets.length === 0) return [];
+  const source = await ctx.db.getRepository('dz_artifacts').findOne({ filter: { projectId, code: def.code }, transaction });
+  const marked: string[] = [];
+  for (const code of targets) {
+    const target = await ctx.db.getRepository('dz_artifacts').findOne({
+      filter: { projectId, code },
+      appends: ['currentVersion'],
+      transaction,
+    });
+    const refs = (target?.get('currentVersion')?.get('upstreamRefs') ?? {}) as Record<string, number | null>;
+    const latest = readableVersionId(source, getArtifactDef(code).stage === def.stage);
+    if (target && (unconditional || refs[def.code] !== latest)) {
+      await target.update({ stale: true, staleReason: reason }, { transaction });
+      marked.push(code);
+    }
+  }
+  return marked;
+}
+
+export async function transitionArtifact(
+  ctx: Context,
+  pc: ProjectContext,
+  def: ArtifactDef,
+  action: LifecycleAction,
+  reason?: string,
+) {
+  if (action === 'save') throw new HttpError(400, '保存请使用 saveArtifact');
+  const projectId = pc.project.get('id');
+
+  return ctx.db.sequelize.transaction(async (transaction: any) => {
+    const artifact = await ctx.db.getRepository('dz_artifacts').findOne({
+      filter: { projectId, code: def.code },
+      appends: ['currentVersion'],
+      transaction,
+    });
+    if (!artifact || !artifact.get('currentVersionId')) throw new HttpError(409, '这份成果还没有内容');
+    const from = artifact.get('status') as ArtifactStatus;
+    const to = nextStatus(action, from, pc.actor, reason);
+
+    if (action === 'stepDone') {
+      const states = await loadStates(ctx, projectId, transaction);
+      const unlock = unlockInfo(def, states);
+      if (!unlock.unlocked && !artifact.get('exception')) throw new HttpError(409, unlock.waitingFor ?? '这一步尚未解锁', 'LOCKED_STEP');
+    }
+    if (requiresValidation(action) && !artifact.get('exception')) {
+      const issues = validateArtifact(def.code, artifact.get('currentVersion')?.get('payload'));
+      if (hasBlockingIssues(issues)) {
+        throw new HttpError(422, '还有未通过的校验', 'VALIDATION_FAILED', { issues });
+      }
+    }
+
+    const values: Record<string, unknown> = { status: to };
+    if (action === 'stepDone') values.stepDoneVersionId = artifact.get('currentVersionId');
+    if (action === 'confirm' || action === 'forceLock') values.lockedVersionId = artifact.get('currentVersionId');
+    await artifact.update(values, { transaction });
+
+    let stale: string[] = [];
+    if (PROPAGATING.includes(action)) {
+      const reopening = action === 'reopen' || action === 'forceReturn';
+      const label = reopening ? '已解锁重开' : '有新版本';
+      stale = await markDownstreamStale(ctx, pc, def, `${def.specId} ${def.name}${label}`, reopening, transaction);
+    }
+    await audit(
+      ctx,
+      pc,
+      { code: def.code, action, reason, fromStatus: from, toStatus: to, rev: artifact.get('currentRev'), meta: { stale } },
+      transaction,
+    );
+    return { status: to, stale };
+  });
+}
+
+export async function projectOverview(ctx: Context, pc: ProjectContext) {
+  const projectId = pc.project.get('id');
+  const rows = await ctx.db.getRepository('dz_artifacts').find({ filter: { projectId } });
+  const byCode = new Map(rows.map((r: any) => [r.get('code'), r]));
+  const states = await loadStates(ctx, projectId);
+  return {
+    project: pc.project.toJSON(),
+    projectRole: pc.projectRole,
+    isConsultAdmin: pc.access.isConsultAdmin,
+    artifacts: ARTIFACTS.map((def) => {
+      const row: any = byCode.get(def.code);
+      return {
+        code: def.code,
+        status: (row?.get('status') as ArtifactStatus) ?? 'not_started',
+        stale: !!row?.get('stale'),
+        staleReason: row?.get('staleReason') ?? null,
+        exception: !!row?.get('exception'),
+        currentRev: row?.get('currentRev') ?? 0,
+        updatedAt: row?.get('updatedAt') ?? null,
+        unlock: unlockInfo(def, states),
+      };
+    }),
+  };
+}
+
+export async function recordDissent(ctx: Context, pc: ProjectContext, def: ArtifactDef, content: string) {
+  if (!pc.projectRole || !['ent_lead', 'dept_head', 'member'].includes(pc.projectRole)) {
+    throw new HttpError(403, '只有参与共创的企业成员可以记录异议');
+  }
+  if (!content?.trim()) throw new HttpError(400, '请填写异议内容');
+  const artifact = await ctx.db.getRepository('dz_artifacts').findOne({ filter: { projectId: pc.project.get('id'), code: def.code } });
+  if (!artifact?.get('currentVersionId')) throw new HttpError(409, '这份成果还没有内容');
+  return ctx.db.getRepository('dz_dissents').create({
+    values: {
+      projectId: pc.project.get('id'),
+      code: def.code,
+      versionId: artifact.get('currentVersionId'),
+      content: content.trim(),
+      spaceName: pc.spaceName,
+    },
+    context: ctx,
+  });
+}
+
+export async function grantStepException(ctx: Context, pc: ProjectContext, def: ArtifactDef, reason: string) {
+  if (pc.projectRole !== 'lead_consultant' && !pc.access.isConsultAdmin) {
+    throw new HttpError(403, '只有主咨询师或咨询管理员可以批准跳步例外');
+  }
+  if (!reason?.trim()) throw new HttpError(400, '需要填写原因');
+  return ctx.db.sequelize.transaction(async (transaction: any) => {
+    const artifact = await ensureArtifact(ctx, pc, def.code, transaction);
+    await artifact.update({ exception: true }, { transaction });
+    await ctx.db.getRepository('dz_step_exceptions').create({
+      values: { projectId: pc.project.get('id'), code: def.code, reason: reason.trim(), spaceName: pc.spaceName },
+      context: ctx,
+      transaction,
+    });
+    await audit(ctx, pc, { code: def.code, action: 'grantException', reason }, transaction);
+    return { exception: true };
+  });
+}
