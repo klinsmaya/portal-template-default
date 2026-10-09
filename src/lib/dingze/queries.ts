@@ -5,6 +5,7 @@ import type { LifecycleAction } from "@dingze/shared";
 import {
   type ProjectSummary,
   getArtifactDetail,
+  getConsultantBoard,
   getMySpaces,
   getProjectOverview,
   listMyProjects,
@@ -15,6 +16,7 @@ import {
 
 export const dingzeKeys = {
   spaces: ["dingze", "spaces"] as const,
+  board: ["dingze", "board"] as const,
   projects: ["dingze", "projects"] as const,
   overview: (projectId: number) => ["dingze", "overview", projectId] as const,
   artifact: (projectId: number, code: string) => ["dingze", "artifact", projectId, code] as const,
@@ -68,6 +70,7 @@ function useInvalidateProject(project: ProjectSummary | undefined) {
     if (!project) return Promise.resolve();
     return Promise.all([
       client.invalidateQueries({ queryKey: dingzeKeys.overview(project.id) }),
+      client.invalidateQueries({ queryKey: dingzeKeys.board }),
       code
         ? client.invalidateQueries({ queryKey: dingzeKeys.artifact(project.id, code) })
         : Promise.resolve(),
@@ -99,4 +102,8 @@ export function useRecordDissent(project: ProjectSummary | undefined, code: stri
     mutationFn: (content: string) => recordDissent(project!.spaceName, { projectId: project!.id, code, content }),
     onSuccess: () => invalidate(code),
   });
+}
+
+export function useConsultantBoard() {
+  return useQuery({ queryKey: dingzeKeys.board, queryFn: getConsultantBoard, refetchInterval: 60_000 });
 }

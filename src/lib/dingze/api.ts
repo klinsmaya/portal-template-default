@@ -145,3 +145,28 @@ export async function recordDissent(
     headers: spaceHeaders(spaceName),
   });
 }
+
+export type BoardArtifact = {
+  code: string;
+  status: ArtifactStatus;
+  stale: boolean;
+  staleReason: string | null;
+  currentRev: number;
+  updatedAt: string | null;
+};
+
+export type BoardProject = {
+  id: number;
+  name: string;
+  year: number;
+  spaceName: string;
+  primaryExpression: "house" | "sixfold";
+  projectRole: ProjectRole | null;
+  enterprise: { id: number; name: string; shortName: string; status: "active" | "suspended" } | null;
+  artifacts: BoardArtifact[];
+};
+
+/** Cross-enterprise: the plugin resolves the caller's spaces itself. */
+export async function getConsultantBoard() {
+  return nocobaseClient.action<{ projects: BoardProject[] }>("dingze", "consultantBoard", { method: "GET" });
+}

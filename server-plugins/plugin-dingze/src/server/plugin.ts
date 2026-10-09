@@ -13,6 +13,7 @@ import {
   toHttpError,
   transitionArtifact,
 } from './services/artifacts';
+import { consultantBoard } from './services/board';
 import { createProject, listEnterprises, myProjects, provisionEnterprise, setProjectMembers } from './services/enterprises';
 import {
   addEnterpriseMembers,
@@ -77,6 +78,7 @@ export class PluginDingzeServer extends Plugin {
       name: 'dingze',
       actions: {
         myProjects: action((ctx) => myProjects(ctx)),
+        consultantBoard: action((ctx) => consultantBoard(ctx)),
         projectOverview: action(async (ctx) => {
           const pc = await loadProjectContext(ctx, ctx.action.params.projectId);
           return projectOverview(ctx, pc);

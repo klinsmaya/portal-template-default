@@ -1,4 +1,4 @@
-import { BookOpenCheck, Building, Building2, FolderKanban, Settings2, UsersRound } from "lucide-react";
+import { BookOpenCheck, Building, Building2, ClipboardList, FolderKanban, Settings2, UsersRound } from "lucide-react";
 import { Navigate, Outlet } from "react-router";
 
 import { defineAppRoutes } from "@nocobase/portal-sdk/routing";
@@ -37,6 +37,20 @@ export const appRoutes = defineAppRoutes([
       { name: "project.workspace", path: "workspace", lazy: () => import("@/pages/projects/workspace") },
       { name: "project.workspace.artifact", path: "workspace/:code", lazy: () => import("@/pages/projects/workspace") },
     ],
+  },
+  {
+    name: "board",
+    path: "/board",
+    lazy: () => import("@/pages/board"),
+    access: { roles: { anyOf: ["dz_consultant", "dz_consult_admin"] } },
+    resource: {
+      meta: {
+        label: "咨询师工作台",
+        priority: 0,
+        icon: <ClipboardList />,
+        description: "跨企业汇总待复核、待企业确认和上游已变更的成果。",
+      },
+    },
   },
   {
     name: "my-enterprise",
