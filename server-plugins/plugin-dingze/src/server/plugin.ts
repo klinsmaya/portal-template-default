@@ -15,6 +15,7 @@ import {
 } from './services/artifacts';
 import { consultantBoard } from './services/board';
 import { opsBoard } from './services/usage';
+import { addGuidanceGap, listGuidanceGaps, reviewGuidanceGap } from './services/guidance';
 import { addMaterial, deleteMaterial, getMaterial, getProfile, listMaterials, saveProfile, searchMaterials } from './services/materials';
 import { addComment, listComments, resolveComment } from './services/comments';
 import { markNotificationsRead, myNotifications } from './services/notify';
@@ -78,6 +79,17 @@ function values(ctx: Context): Record<string, any> {
 }
 
 export class PluginDingzeServer extends Plugin {
+  /** The rule-pack version a guidance gap was observed in. */
+  pluginVersion(): string {
+    const fromRecord = (this.options as { version?: string } | undefined)?.version;
+    if (fromRecord) return fromRecord;
+    try {
+      return require('../../package.json').version ?? '';
+    } catch {
+      return '';
+    }
+  }
+
   async load() {
     this.app.resourceManager.define({
       name: 'dingze',
@@ -85,6 +97,13 @@ export class PluginDingzeServer extends Plugin {
         myProjects: action((ctx) => myProjects(ctx)),
         consultantBoard: action((ctx) => consultantBoard(ctx)),
         opsBoard: action((ctx) => opsBoard(ctx)),
+        addGuidanceGap: action(async (ctx) => {
+          const v = values(ctx);
+          const pc = await loadProjectContext(ctx, v.projectId);
+          return addGuidanceGap(ctx, pc, requireArtifactDef(v.code), v, this.pluginVersion());
+        }),
+        listGuidanceGaps: action((ctx) => listGuidanceGaps(ctx)),
+        reviewGuidanceGap: action((ctx) => reviewGuidanceGap(ctx, values(ctx))),
         projectOverview: action(async (ctx) => {
           const pc = await loadProjectContext(ctx, ctx.action.params.projectId);
           return projectOverview(ctx, pc);

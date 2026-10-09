@@ -9,3 +9,4 @@ export * from './diff';
 export * from './book-notes';
 export * from './materials';
 export * from './usage';
+export * from './guidance';

@@ -46,6 +46,7 @@ import { StepBar } from "./components/step-bar";
 import { ValidationBar } from "./components/validation-bar";
 import { BookMethod } from "./components/book-method";
 import { CommentMarkers, CommentsPanel } from "./components/comments-panel";
+import { GuidanceGapButton } from "./components/guidance-gap-dialog";
 import { ArtifactEditor } from "./editors/artifact-editor";
 import { useProjectContext } from "./project-context";
 
@@ -586,6 +587,9 @@ function Workspace({ code }: { code: string }) {
               stage={def.stage}
               chatId={`dingze-${project.id}-${code}`}
             />
+            {overview.isConsultAdmin || (!!role && CONSULTANT_ROLES.includes(role)) ? (
+              <GuidanceGapButton project={project} code={code} artifactName={def.name} />
+            ) : null}
           </div>
           <div className={cn(asideTab !== "comments" && "hidden")}>
             <CommentsPanel
