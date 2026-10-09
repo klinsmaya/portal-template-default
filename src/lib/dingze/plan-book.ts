@@ -169,7 +169,18 @@ export function buildCompanyPlanBook(params: {
   const nodes = nodesBlock(u["S3-05"], charters);
   const resources = resourcesBlock(u["S3-06"], charters);
   const chapters: Chapter[] = PLAN_BOOK_CHAPTERS.map((c) => ({ no: c.no, title: c.company, source: c.source, blocks: [] }));
-  chapters[0].blocks = [text(t.summary)];
+  chapters[0].blocks = [
+    { kind: "heading", text: "1.1 总体战略目标与愿景承接" },
+    text(t.summary),
+    { kind: "heading", text: "1.2 本年度关键 KPI" },
+    targets.length
+      ? { kind: "table", headers: ["战略主题", "战略 KPI", "本年度目标"], rows: targets.map((x) => [x.theme, x.name, `${x.value} ${x.unit}`.trim()]) }
+      : { kind: "note", text: "S1-07 没有本年度目标值" },
+    { kind: "heading", text: "1.3 本年度关键项目清单及关键节点" },
+    charters.length
+      ? { kind: "table", headers: ["项目编号", "项目名称", "项目目标", "起止时间", "关键节点", "负责人"], rows: charters.map((c) => [c.code, c.name, c.objective, [c.start, c.end].filter(Boolean).join(" ~ "), c.milestones, c.owner]) }
+      : { kind: "note", text: "S3-02 还没有项目任务书" },
+  ];
   chapters[1].blocks = [text(t.lastYear)];
   chapters[2].blocks = [text(t.environment)];
   chapters[3].blocks = chapter4;
@@ -189,7 +200,7 @@ export function buildCompanyPlanBook(params: {
     },
     ...(t.dictionaryNote?.trim() ? [text(t.dictionaryNote)] : []),
   ];
-  return { title: `${params.enterprise} ${year} 年度经营计划书`, subtitle: "公司级", chapters };
+  return { title: `${params.enterprise} ${year} 年度经营计划书`, subtitle: "公司级 · 报告对象：董事会 / 经营层", chapters };
 }
 
 /** S3-08: one department's plan book, filtered to what that department undertakes. */
@@ -209,7 +220,17 @@ export function buildDeptPlanBook(params: {
   const nodes = nodesBlock(u["S3-05"], charters);
   const resources = resourcesBlock(u["S3-06"], charters);
   const chapters: Chapter[] = PLAN_BOOK_CHAPTERS.map((c) => ({ no: c.no, title: c.dept, source: c.source, blocks: [] }));
-  chapters[0].blocks = [text(t.summary)];
+  chapters[0].blocks = [
+    { kind: "heading", text: "1.1 部门年度目标（承接公司）" },
+    text(t.summary),
+    undertakings.length
+      ? { kind: "table", headers: ["角色", "任务", "衡量指标", "指标值"], rows: undertakings.map((r) => [r.role, r.task, r.metric, r.value]) }
+      : { kind: "note", text: "S2-05 里没有本部门的承接项" },
+    { kind: "heading", text: "1.2 部门关键项目" },
+    charters.length
+      ? { kind: "table", headers: ["项目编号", "项目名称", "项目目标", "起止时间", "负责人"], rows: charters.map((c) => [c.code, c.name, c.objective, [c.start, c.end].filter(Boolean).join(" ~ "), c.owner]) }
+      : { kind: "note", text: "本部门没有牵头的项目" },
+  ];
   chapters[1].blocks = [text(t.lastYear)];
   chapters[2].blocks = [text(t.environment)];
   chapters[3].blocks = [

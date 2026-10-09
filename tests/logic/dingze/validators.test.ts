@@ -7,6 +7,7 @@ import {
   emptyStrategyContent,
   hasBlockingIssues,
   validateArtifact,
+  verifyRaci,
 } from "@dingze/shared";
 
 const fullHouse = (): StrategyContent => ({
@@ -97,5 +98,41 @@ describe("RACI matrix", () => {
     const issues = validateArtifact("S2-04", matrix({ p1: { ops: ["R", "A"], dispatch: ["R"], it: ["R", "C"] } }));
     expect(hasBlockingIssues(issues)).toBe(false);
     expect(issues.filter((i) => i.level === "warning").length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("RACI 验证优化表 (表 3-18)", () => {
+  const big = () =>
+    matrix({
+      p1: { ops: ["R"], dispatch: ["A"], it: ["R", "I"] },
+      p2: { ops: ["R"], dispatch: ["A"], it: ["C"] },
+      p3: { ops: ["R"], dispatch: ["A"], it: ["C"] },
+      p4: { ops: ["R", "A"], dispatch: ["C"], it: ["C"] },
+    });
+  const wide: RaciMatrix = {
+    columns: ["ops", "dispatch", "it", "hr", "fin"].map((id) => ({ id, name: id })),
+    rows: [{ id: "p1", name: "项目 p1", cells: { ops: ["A"], dispatch: ["R", "I"], it: ["C"], hr: ["C"], fin: ["C"] } }],
+  };
+
+  it("counts the horizontal and vertical checks", () => {
+    const v = verifyRaci(big());
+    expect(v.horizontal).toMatchObject({ noR: 0, noA: 0, multiA: 0, multiR: 1, rWithCI: 1 });
+    expect(v.verticalApplies).toBe(true);
+    expect(v.vertical.rOverload).toEqual(["运营部"]);
+    expect(v.vertical.aSprawl).toEqual(["调度中心"]);
+    expect(v.vertical.noRA).toEqual([]);
+  });
+
+  it("warns, never blocks, on R doubling as C / I, too many C, an overloaded R and a sprawling A", () => {
+    const issues = validateArtifact("S2-04", wide);
+    expect(hasBlockingIssues(issues)).toBe(false);
+    expect(issues.map((i) => i.message)).toEqual(expect.arrayContaining([expect.stringContaining("既是 R 又是 C / I"), expect.stringContaining("顾问过多")]));
+    const columnIssues = validateArtifact("S2-04", big());
+    expect(hasBlockingIssues(columnIssues)).toBe(false);
+    expect(columnIssues.map((i) => i.message)).toEqual(expect.arrayContaining([expect.stringContaining("执行超载"), expect.stringContaining("担任 A 的事项过多")]));
+  });
+
+  it("skips the column checks below four rows", () => {
+    expect(verifyRaci(matrix({ p1: { ops: ["R", "A"] } })).verticalApplies).toBe(false);
   });
 });

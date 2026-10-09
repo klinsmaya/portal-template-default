@@ -28,6 +28,17 @@ export function TextCell({
   placeholder?: string;
   className?: string;
 }) {
+  if (readOnly) {
+    const text = (value ?? "").trim();
+    return (
+      <div
+        aria-label={label}
+        className={cn("min-h-9 rounded-md px-2 py-1.5 text-sm whitespace-pre-wrap", text ? "text-foreground" : "text-muted-foreground/60", text === "待补" && pendingTone, className)}
+      >
+        {text || "—"}
+      </div>
+    );
+  }
   const shared = {
     "aria-label": label,
     value: value ?? "",

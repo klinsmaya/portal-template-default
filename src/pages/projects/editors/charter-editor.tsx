@@ -151,7 +151,7 @@ export function CharterEditor({ value, onChange, readOnly, issues, upstream, pro
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             新任务书编号的职能英文简称
             <Input aria-label="职能英文简称" value={func} onChange={(e) => setFunc(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))} className="h-7 w-24" />
-            编号规则：年份＋职能简称＋P＋3 位序号，如 {nextCharterCode(projectYear, func || "OPS", charters)}
+            编号规则：年份＋职能英文简称＋P＋3 位序号，如 {nextCharterCode(projectYear, func || "OPS", charters)}（也可写成 2024HR-P001）
           </label>
         ) : null}
       </div>

@@ -120,7 +120,8 @@ export interface ProjectCharterSet {
   charters: ProjectCharter[];
 }
 
-export const CHARTER_CODE_PATTERN = /^\d{4}[A-Z]{2,6}P\d{3}$/;
+/** 年份＋职能英文简称＋P＋3 位序号; the book writes it with or without hyphens (2026OPSP001, 2024HR-P001, 2026-RP001). */
+export const CHARTER_CODE_PATTERN = /^\d{4}-?[A-Z]{0,6}-?P\d{3}$/;
 export const MAX_WBS_LEVEL = 3;
 
 export function emptyCharterSet(): ProjectCharterSet {
@@ -225,7 +226,7 @@ export function validateCharterSet(set: ProjectCharterSet): Issue[] {
     ].filter(([key]) => !filled(c[key as keyof ProjectCharter] as string));
     if (missing.length) issues.push({ level: 'error', message: `“${name}”缺${missing.map(([, l]) => l).join('、')}`, anchor: c.id });
     if (!CHARTER_CODE_PATTERN.test(c.code ?? '')) {
-      issues.push({ level: 'error', message: `“${name}”的项目编号应为“年份＋职能英文简称＋P＋3 位序号”，如 2026OPSP001`, anchor: c.id });
+      issues.push({ level: 'error', message: `“${name}”的项目编号应为“年份＋职能英文简称＋P＋3 位序号”，如 2026OPSP001 或 2024HR-P001`, anchor: c.id });
     } else codes.set(c.code, (codes.get(c.code) ?? 0) + 1);
     if (filled(c.start) && filled(c.end) && c.end < c.start) issues.push({ level: 'error', message: `“${name}”的结束时间早于开始时间`, anchor: c.id });
     if (!filled(c.acceptance?.result)) issues.push({ level: 'error', message: `“${name}”缺验收标准中的结果指标`, anchor: c.id });
@@ -297,6 +298,8 @@ export const NODE_STATUS_LABELS: Record<NodeStatus, string> = { planned: '未开
 
 export interface PlanNode {
   id: string;
+  /** 项目阶段 (表 4-5), e.g. 立项 → 设计 → 试产 → 验证 → 上市; optional. */
+  phase: string;
   /** Month “2026-03” or quarter “2026-Q2”, per the project's schedule scale. */
   time: string;
   name: string;
@@ -327,7 +330,7 @@ export function emptyProgressPlan(scale: 'month' | 'quarter'): ProgressPlan {
 }
 
 export function planNode(patch: Partial<PlanNode> = {}): PlanNode {
-  return { id: newRowId('pn'), time: '', name: '', deliverable: '', acceptance: '', owner: '', status: 'planned', dependsOn: [], ...patch };
+  return { id: newRowId('pn'), phase: '', time: '', name: '', deliverable: '', acceptance: '', owner: '', status: 'planned', dependsOn: [], ...patch };
 }
 
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;

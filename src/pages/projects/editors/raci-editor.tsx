@@ -10,6 +10,7 @@ import {
   newRowId,
   raciRowsFrom,
   toggleRaciLetter,
+  verifyRaci,
 } from "@dingze/shared";
 
 import { Button } from "@/components/ui/button";
@@ -181,6 +182,56 @@ export function RaciEditor({ value, onChange, readOnly, issues, upstream, orgUni
           </tbody>
         </table>
       </div>
+      {rows.length > 0 && columns.length > 0 ? <RaciVerification table={value} /> : null}
     </section>
+  );
+}
+
+/** 表 3-18 RACI 验证优化表: the book's seven checks, run live on the matrix. */
+function RaciVerification({ table }: { table: RaciTable }) {
+  const v = verifyRaci(table);
+  const h = v.horizontal;
+  const checks: { dir: string; point: string; hit: number | string[]; action: string }[] = [
+    { dir: "横向（按任务）", point: "无 R：任务无人实施", hit: h.noR, action: "补充执行人" },
+    { dir: "横向", point: "无 A：缺乏问责", hit: h.noA, action: "明确唯一主责" },
+    { dir: "横向", point: "多 A：多头负责", hit: h.multiA, action: "只保留一个 A" },
+    { dir: "横向", point: "多 C：顾问过多", hit: h.manyC, action: "精简征询范围" },
+    { dir: "横向", point: "多 I：知情过宽", hit: h.manyI, action: "按需设定" },
+    { dir: "横向", point: "R 兼 C / I", hit: h.rWithCI, action: "执行者不再被征询 / 知会" },
+    { dir: "纵向（按角色）", point: "R 超载", hit: v.vertical.rOverload, action: "拆分或下放" },
+    { dir: "纵向", point: "A 泛滥", hit: v.vertical.aSprawl, action: "梳理授权链" },
+    { dir: "纵向", point: "全无 RA", hit: v.vertical.noRA, action: "界定为 C 或 I（支持性岗位）" },
+  ];
+  const describe = (hit: number | string[]) => (Array.isArray(hit) ? (hit.length ? hit.join("、") : "—") : hit ? `${hit} 行` : "—");
+  const bad = (hit: number | string[]) => (Array.isArray(hit) ? hit.length > 0 : hit > 0);
+  return (
+    <details className="rounded-xl border bg-card" open={checks.some((c) => bad(c.hit))}>
+      <summary className="cursor-pointer px-4 py-2 text-sm font-semibold">
+        验证优化表（表 3-18）
+        <span className="ml-2 text-xs font-normal text-muted-foreground">{checks.filter((c) => bad(c.hit)).length ? `${checks.filter((c) => bad(c.hit)).length} 项待处理` : "全部通过"}</span>
+      </summary>
+      <table className="w-full border-t text-xs">
+        <thead className="bg-muted text-muted-foreground">
+          <tr>
+            <th className="px-3 py-1.5 text-left font-semibold">验证方向</th>
+            <th className="px-3 py-1.5 text-left font-semibold">验证点</th>
+            <th className="px-3 py-1.5 text-left font-semibold">现状</th>
+            <th className="px-3 py-1.5 text-left font-semibold">处理动作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c.point} className={cn("border-t", bad(c.hit) && "bg-destructive/5")}>
+              <td className="px-3 py-1.5 text-muted-foreground">{c.dir}</td>
+              <td className="px-3 py-1.5">{c.point}</td>
+              <td className={cn("px-3 py-1.5", bad(c.hit) ? "font-semibold text-destructive" : "text-status-done-foreground")}>
+                {!v.verticalApplies && c.dir.startsWith("纵向") ? "行数不足 4，暂不检查" : describe(c.hit)}
+              </td>
+              <td className="px-3 py-1.5 text-muted-foreground">{c.action}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }

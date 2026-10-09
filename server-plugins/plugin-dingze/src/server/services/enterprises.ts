@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import type { Context } from '@nocobase/actions';
 
-import { PROJECT_ROLE_LABELS, type ProjectRole } from '../../shared';
+import { PROJECT_ROLE_LABELS, type ProjectRole, STAGES, stageGateCodes } from '../../shared';
 import { HttpError, SYSTEM_ROLES, currentUserId, requireOps, systemAccess, userSpaceNames } from './access';
 import { notifyAssignment } from './notify';
 import { creator, insertUser } from './ops';
@@ -176,5 +176,18 @@ export async function myProjects(ctx: Context) {
     ? { spaceName: { $in: spaces } }
     : { id: { $in: [...roleByProject.keys()] } };
   const projects = await ctx.db.getRepository('dz_projects').find({ filter, appends: ['enterprise'], sort: ['-createdAt'] });
-  return projects.map((p: any) => ({ ...p.toJSON(), projectRole: roleByProject.get(p.get('id')) ?? null }));
+  const ids = projects.map((p: any) => p.get('id'));
+  const rows = ids.length
+    ? await ctx.db.getRepository('dz_artifacts').find({ filter: { projectId: { $in: ids } }, fields: ['projectId', 'code', 'status'] })
+    : [];
+  const progress = (projectId: number) => {
+    const locked = new Set(rows.filter((r: any) => r.get('projectId') === projectId && r.get('status') === 'locked').map((r: any) => r.get('code')));
+    return Object.fromEntries(
+      STAGES.map((stage) => {
+        const gate = stageGateCodes(stage.key);
+        return [stage.key, { locked: gate.filter((c) => locked.has(c)).length, total: gate.length }];
+      }),
+    );
+  };
+  return projects.map((p: any) => ({ ...p.toJSON(), projectRole: roleByProject.get(p.get('id')) ?? null, progress: progress(p.get('id')) }));
 }

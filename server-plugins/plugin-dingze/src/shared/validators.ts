@@ -240,36 +240,103 @@ export interface RaciMatrix {
 }
 
 export const A_LOAD_WARNING_RATIO = 0.5;
+/** 表 3-18: a role carrying R on most rows is overloaded. */
+export const R_LOAD_WARNING_RATIO = 0.6;
+/** 表 3-18: 多 C / 多 I on one row dilute the consultation and the information flow. */
+export const MAX_C_PER_ROW = 2;
+export const MAX_I_PER_ROW = 3;
+/** Column checks need a few rows before an empty or overloaded column means anything. */
+const COLUMN_CHECK_MIN_ROWS = 4;
 
-export function validateRaci(matrix: RaciMatrix): Issue[] {
-  const issues: Issue[] = [];
-  const aLoad = new Map<string, number>();
+/**
+ * 表 3-18 RACI 验证优化表: the book's horizontal (per task) and vertical (per role) checks,
+ * with the number of rows or columns that trip each one.
+ */
+export interface RaciVerification {
+  horizontal: { noR: number; noA: number; multiA: number; multiR: number; manyC: number; manyI: number; rWithCI: number };
+  vertical: { rOverload: string[]; aSprawl: string[]; noRA: string[] };
+  /** Column checks only run once the matrix has enough rows. */
+  verticalApplies: boolean;
+}
+
+export function verifyRaci(matrix: RaciMatrix): RaciVerification {
+  const h = { noR: 0, noA: 0, multiA: 0, multiR: 0, manyC: 0, manyI: 0, rWithCI: 0 };
+  const perColumn = new Map(matrix.columns.map((c) => [c.id, { r: 0, a: 0, any: false }]));
   for (const row of matrix.rows) {
     let a = 0;
     let r = 0;
+    let c = 0;
+    let i = 0;
     for (const col of matrix.columns) {
       const letters = row.cells[col.id] ?? [];
+      const stat = perColumn.get(col.id)!;
       if (letters.includes('A')) {
         a += 1;
-        aLoad.set(col.id, (aLoad.get(col.id) ?? 0) + 1);
+        stat.a += 1;
       }
+      if (letters.includes('R')) {
+        r += 1;
+        stat.r += 1;
+      }
+      if (letters.includes('C')) c += 1;
+      if (letters.includes('I')) i += 1;
+      if (letters.length) stat.any = true;
+      if (letters.includes('R') && (letters.includes('C') || letters.includes('I'))) h.rWithCI += 1;
+    }
+    if (r === 0) h.noR += 1;
+    if (a === 0) h.noA += 1;
+    if (a > 1) h.multiA += 1;
+    if (r > 1) h.multiR += 1;
+    if (c > MAX_C_PER_ROW) h.manyC += 1;
+    if (i > MAX_I_PER_ROW) h.manyI += 1;
+  }
+  const rows = matrix.rows.length;
+  const verticalApplies = rows >= COLUMN_CHECK_MIN_ROWS;
+  const v = { rOverload: [] as string[], aSprawl: [] as string[], noRA: [] as string[] };
+  if (verticalApplies) {
+    for (const col of matrix.columns) {
+      const stat = perColumn.get(col.id)!;
+      if (stat.r / rows > R_LOAD_WARNING_RATIO) v.rOverload.push(col.name);
+      if (stat.a / rows > A_LOAD_WARNING_RATIO) v.aSprawl.push(col.name);
+      if (stat.r === 0 && stat.a === 0) v.noRA.push(col.name);
+    }
+  }
+  return { horizontal: h, vertical: v, verticalApplies };
+}
+
+export function validateRaci(matrix: RaciMatrix): Issue[] {
+  const issues: Issue[] = [];
+  for (const row of matrix.rows) {
+    let a = 0;
+    let r = 0;
+    let c = 0;
+    let i = 0;
+    for (const col of matrix.columns) {
+      const letters = row.cells[col.id] ?? [];
+      if (letters.includes('A')) a += 1;
       if (letters.includes('R')) r += 1;
+      if (letters.includes('C')) c += 1;
+      if (letters.includes('I')) i += 1;
       if (letters.includes('R') && letters.includes('A')) {
         issues.push({ level: 'warning', message: `“${row.name}”由${col.name}同时担任 R 与 A，确认是否有意为之`, anchor: row.id });
+      }
+      if (letters.includes('R') && (letters.includes('C') || letters.includes('I'))) {
+        issues.push({ level: 'warning', message: `“${row.name}”里${col.name}既是 R 又是 C / I：执行者不必再被征询或知会`, anchor: row.id });
       }
     }
     if (a === 0) issues.push({ level: 'error', message: `“${row.name}”没有 A（最终负责人）`, anchor: row.id });
     if (a > 1) issues.push({ level: 'error', message: `“${row.name}”有 ${a} 个 A，A 只能有一个`, anchor: row.id });
     if (r === 0) issues.push({ level: 'error', message: `“${row.name}”没有 R（执行者）`, anchor: row.id });
     if (r > 1) issues.push({ level: 'warning', message: `“${row.name}”有 ${r} 个 R，注意分工边界`, anchor: row.id });
+    if (c > MAX_C_PER_ROW) issues.push({ level: 'warning', message: `“${row.name}”要征询 ${c} 个部门，顾问过多会拖慢决策，精简到 ${MAX_C_PER_ROW} 个以内`, anchor: row.id });
+    if (i > MAX_I_PER_ROW) issues.push({ level: 'warning', message: `“${row.name}”要知会 ${i} 个部门，按需设定知情范围`, anchor: row.id });
   }
-  if (matrix.rows.length >= 4) {
-    for (const col of matrix.columns) {
-      const load = aLoad.get(col.id) ?? 0;
-      if (load / matrix.rows.length > A_LOAD_WARNING_RATIO) {
-        issues.push({ level: 'warning', message: `${col.name}担任 A 的事项有 ${load} 个，注意负荷`, anchor: col.id });
-      }
-    }
+  const { vertical, verticalApplies } = verifyRaci(matrix);
+  if (verticalApplies) {
+    const col = (name: string) => matrix.columns.find((c) => c.name === name)?.id;
+    for (const name of vertical.aSprawl) issues.push({ level: 'warning', message: `${name}担任 A 的事项过多，注意负荷，梳理授权链`, anchor: col(name) });
+    for (const name of vertical.rOverload) issues.push({ level: 'warning', message: `${name}在大多数事项上都是 R，执行超载，考虑拆分或下放`, anchor: col(name) });
+    for (const name of vertical.noRA) issues.push({ level: 'warning', message: `${name}没有任何 R / A：确认它是支持性岗位（只 C / I），否则补充责任`, anchor: col(name) });
   }
   return issues;
 }

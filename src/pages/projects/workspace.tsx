@@ -1,4 +1,4 @@
-import { History, Lock, Save } from "lucide-react";
+import { ArrowRight, History, Lock, Save } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import {
   getArtifactDef,
   isArtifactCode,
   validateArtifact,
+  ARTIFACTS,
 } from "@dingze/shared";
 
 import { useAIPageElementHandle } from "@/extensions/nocobase-ai/components";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { nextStep, workspacePath } from "@/lib/dingze/progress";
 import { useArtifactDetail, useSaveArtifact, useUpstreamPayloads } from "@/lib/dingze/queries";
+import { nextArtifact } from "@/lib/dingze/next-step";
 import { useRecordExport } from "@/lib/dingze/records-queries";
 
 import { EDITABLE_CODES, emptyPayload } from "@/lib/dingze/artifact-payloads";
@@ -35,6 +37,7 @@ import { ExportButton } from "./components/export-button";
 import { PlanBookExportButton } from "./components/plan-book-export";
 import { StepBar } from "./components/step-bar";
 import { ValidationBar } from "./components/validation-bar";
+import { BookMethod } from "./components/book-method";
 import { ArtifactEditor } from "./editors/artifact-editor";
 import { useProjectContext } from "./project-context";
 
@@ -93,11 +96,26 @@ function Workspace({ code }: { code: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverRev, detail.dataUpdatedAt]);
 
+  // Unsaved edits: warn on reload and on in-app links (step bar, project tabs, notifications).
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    const guard = (event: MouseEvent) => {
+      const link = (event.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+      const to = new URL(link.href, window.location.href);
+      if (to.origin !== window.location.origin || to.pathname === window.location.pathname) return;
+      if (!window.confirm("这张表有未保存的修改，离开后会丢失。确定离开？")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    document.addEventListener("click", guard, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guard, true);
+    };
   }, [dirty]);
 
   const issues = useMemo(
@@ -136,6 +154,19 @@ function Workspace({ code }: { code: string }) {
         onError: (error) => toast.error(errorMessage(error)),
       },
     );
+  const canSave = !readOnly && EDITABLE_CODES.has(code);
+  const saveShortcut = useRef(onSave);
+  saveShortcut.current = onSave;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") return;
+      event.preventDefault();
+      if (canSave && dirty && !save.isPending) saveShortcut.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canSave, dirty, save.isPending]);
+  const next = useMemo(() => nextArtifact(code, overview.artifacts), [code, overview.artifacts]);
 
   // The digital consultant reads the live draft and proposes changes through a frontend
   // tool; the change is written (as an AI-suggested version) only after the user approves.
@@ -258,19 +289,27 @@ function Workspace({ code }: { code: string }) {
   return (
     <AIPageContextScope context={page.context}>
       <div className="flex flex-1 flex-wrap items-stretch">
-        <aside className="w-full border-b bg-card p-4 md:w-[300px] md:border-r md:border-b-0">
-          <StepBar
-            projectId={project.id}
-            artifacts={overview.artifacts}
-            stage={def.stage}
-            activeCode={code}
-          />
+        <aside className="w-full border-b bg-card md:w-[300px] md:border-r md:border-b-0">
+          <details className="md:hidden">
+            <summary className="flex min-h-12 cursor-pointer items-center gap-2 px-4 text-sm">
+              <span className="text-muted-foreground">步骤</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">{def.specId} {def.name}</span>
+              <span className="text-xs text-muted-foreground">展开 ▾</span>
+            </summary>
+            <div className="px-4 pb-4">
+              <StepBar projectId={project.id} artifacts={overview.artifacts} stage={def.stage} activeCode={code} />
+            </div>
+          </details>
+          <div className="hidden p-4 md:block">
+            <StepBar projectId={project.id} artifacts={overview.artifacts} stage={def.stage} activeCode={code} />
+          </div>
         </aside>
 
         <main
           ref={page.ref}
           className="flex min-w-0 flex-[999_1_560px] flex-col gap-4 p-4 md:p-6"
         >
+          <div className="sticky top-0 z-20 -mx-4 -mt-4 flex flex-col gap-1 border-b bg-background/95 px-4 pt-3 pb-3 backdrop-blur md:-mx-6 md:-mt-6 md:px-6 md:pt-4">
           <div className="text-xs text-muted-foreground">
             {def.task} › {def.step}
           </div>
@@ -316,13 +355,14 @@ function Workspace({ code }: { code: string }) {
                 dirty={dirty}
                 onExported={recordExport}
               />
-              {!readOnly && EDITABLE_CODES.has(code) ? (
+              {canSave ? (
                 <Button
-                  variant="outline"
+                  variant={dirty ? "default" : "outline"}
                   onClick={onSave}
                   disabled={!dirty || save.isPending}
+                  title="Ctrl / ⌘ + S"
                 >
-                  <Save /> {dirty ? "保存" : "已保存"}
+                  <Save /> {save.isPending ? "保存中…" : dirty ? "保存" : "已保存"}
                 </Button>
               ) : null}
               {detail.data ? (
@@ -338,6 +378,7 @@ function Workspace({ code }: { code: string }) {
               ) : null}
             </div>
           </div>
+          </div>
 
           {detail.isLoading ? (
             <Skeleton className="h-96 rounded-xl" />
@@ -350,8 +391,17 @@ function Workspace({ code }: { code: string }) {
             <Alert>
               <Lock />
               <AlertTitle>这一步还没解锁</AlertTitle>
-              <AlertDescription>
-                {detail.data?.unlock.waitingFor}
+              <AlertDescription className="flex flex-col gap-1">
+                <span>{detail.data?.unlock.waitingFor}</span>
+                <span className="flex flex-wrap gap-x-3">
+                  {def.unlockAfter
+                    .filter((c) => !["step_done", "in_review", "pending_confirm", "locked"].includes(overview.artifacts.find((a) => a.code === c)?.status ?? ""))
+                    .map((c) => (
+                      <Link key={c} to={workspacePath(project.id, c)} className="inline-flex items-center gap-1 font-medium text-brand underline">
+                        去做 {getArtifactDef(c).specId} 《{getArtifactDef(c).name}》 <ArrowRight className="size-3.5" />
+                      </Link>
+                    ))}
+                </span>
               </AlertDescription>
             </Alert>
           ) : (
@@ -382,6 +432,32 @@ function Workspace({ code }: { code: string }) {
                     现在修改会生成新版本，需要重新提交复核。
                   </AlertDescription>
                 </Alert>
+              ) : null}
+              {["step_done", "in_review", "pending_confirm", "locked"].includes(status) ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-4 py-2 text-sm">
+                  {next ? (
+                    <>
+                      <span className="text-muted-foreground">这一步{status === "locked" ? "已定版" : "已交出去"}，可以接着做：</span>
+                      <Link to={workspacePath(project.id, next.code)} className="inline-flex items-center gap-1 font-semibold text-brand hover:underline">
+                        {next.specId} 《{next.name}》 <ArrowRight className="size-4" />
+                      </Link>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {ARTIFACTS.filter((a) => a.priority === "P0").every((a) => overview.artifacts.find((x) => x.code === a.code)?.status === "locked") ? (
+                        <>
+                          全部 P0 成果都已定版，可以到
+                          <Link to={`/projects/${project.id}/delivery`} className="mx-1 font-semibold text-brand underline">
+                            交付
+                          </Link>
+                          页导出正式交付物。
+                        </>
+                      ) : (
+                        "本阶段已解锁的表都做完了；下一阶段在本阶段 P0 全部定版后开启。"
+                      )}
+                    </span>
+                  )}
+                </div>
               ) : null}
 
               {EDITABLE_CODES.has(code) ? (
@@ -433,20 +509,7 @@ function Workspace({ code }: { code: string }) {
             <summary className="cursor-pointer font-heading text-base font-bold">
               书中方法
             </summary>
-            <dl className="mt-2 flex flex-col gap-2">
-              <div>
-                <dt className="text-xs opacity-80">工作任务</dt>
-                <dd>{def.task}</dd>
-              </div>
-              <div>
-                <dt className="text-xs opacity-80">实施步骤</dt>
-                <dd>{def.step}</dd>
-              </div>
-              <div>
-                <dt className="text-xs opacity-80">工具 / 成果</dt>
-                <dd>{def.bookRef}</dd>
-              </div>
-            </dl>
+            <BookMethod def={def} />
           </details>
           <CoachPanel
             stage={def.stage}

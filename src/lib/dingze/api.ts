@@ -41,6 +41,8 @@ export type ProjectSummary = {
   spaceName: string;
   enterprise?: { id: number; name: string; shortName: string };
   projectRole: ProjectRole | null;
+  /** P0 tables locked per stage, for the project cards. */
+  progress?: Record<string, { locked: number; total: number }>;
 };
 
 export async function listMyProjects(spaces: MySpaces): Promise<ProjectSummary[]> {

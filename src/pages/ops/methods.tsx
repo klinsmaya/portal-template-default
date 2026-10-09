@@ -1,6 +1,8 @@
 import { Bot, Lock } from "lucide-react";
 
-import { ARTIFACTS, STAGES } from "@dingze/shared";
+import { ARTIFACTS, STAGES, bookNote } from "@dingze/shared";
+
+import { BookMethod } from "@/pages/projects/components/book-method";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +82,14 @@ export default function MethodsPage() {
                       </span>
                     ) : null}
                     <Badge variant={a.priority === "P0" ? "default" : "outline"}>{PRIORITY_LABELS[a.priority]}</Badge>
+                    {bookNote(a.code) ? (
+                      <details className="basis-full text-sm">
+                        <summary className="cursor-pointer text-xs text-muted-foreground">书中方法：要点 · 常见的坑 · 定版门禁</summary>
+                        <div className="mt-2 rounded-lg border border-book-border bg-book px-4 py-2 text-book-foreground">
+                          <BookMethod def={a} />
+                        </div>
+                      </details>
+                    ) : null}
                   </li>
                 ))}
               </ul>

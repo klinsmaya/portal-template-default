@@ -157,7 +157,7 @@ export function BudgetWorksheetEditor({
   const setRows = (next: BudgetWorksheet["rows"]) => onChange({ ...value, rows: next });
   return (
     <section aria-label="年度经营预算" className="flex flex-col gap-4">
-      <EditorToolbar hint="编制年度经营预算，确定关键年度目标的数值依据。预算作为方法底稿保存。">
+      <EditorToolbar hint="表 3-6：先写预算编制说明（战略回顾与假设），再填收入、成本费用、人员、投资研发和现金流预算，最后综合汇总。预算作为方法底稿保存。">
         <div className="flex items-center gap-2 text-sm">
           单位
           <TextCell label="预算单位" value={value.unit} onChange={(unit) => onChange({ ...value, unit })} readOnly={readOnly} className="w-24" />
@@ -166,6 +166,15 @@ export function BudgetWorksheetEditor({
           <AddButton label="添加科目" onClick={() => setRows([...rows, { id: newRowId("b"), item: "", lastYear: "", budget: "", note: "" }])} />
         ) : null}
       </EditorToolbar>
+      <TextCell
+        label="预算编制说明"
+        multiline
+        placeholder="预算编制说明：依据哪些战略回顾与经营假设（如价格、销量、人员编制）编制"
+        value={value.basis ?? ""}
+        onChange={(basis) => onChange({ ...value, basis })}
+        readOnly={readOnly}
+        className="min-h-20"
+      />
       <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full border-collapse text-sm">
           <thead className="bg-muted text-xs text-muted-foreground">

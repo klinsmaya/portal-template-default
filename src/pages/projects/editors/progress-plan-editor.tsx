@@ -54,7 +54,7 @@ export function ProgressPlanEditor({ value, onChange, readOnly, issues, upstream
 
   return (
     <section aria-label="计划实施推进表" className="flex flex-col gap-4">
-      <EditorToolbar hint={`时间刻度：${scale === "quarter" ? "季度" : "月度"}（运营管理里的项目设置）。每个节点写清时间、名称、成果、验收标准，避免“推进、加强、持续优化”这类不可验收的描述。`}>
+      <EditorToolbar hint={`时间刻度：${scale === "quarter" ? "季度" : "月度"}（运营管理里的项目设置）。节点四要素：时间、名称、成果、验收标准；项目阶段选填（如立项 → 设计 → 试产 → 验证 → 上市）。避免“推进、加强、持续优化”这类不可验收的描述。`}>
         <ImportButton label="导入项目及关键节点" count={seed.length} readOnly={readOnly} onClick={() => set([...rows, ...seed])} />
         <ToggleGroup value={[view]} onValueChange={(v) => v[0] && setView(v[0] as "table" | "timeline")} variant="outline" size="sm">
           <ToggleGroupItem value="table">
@@ -115,9 +115,10 @@ export function ProgressPlanEditor({ value, onChange, readOnly, issues, upstream
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1000px] border-collapse text-sm">
+              <table className="w-full min-w-[1100px] border-collapse text-sm">
                 <thead className="text-xs text-muted-foreground">
                   <tr>
+                    <th className="w-28 px-2 py-2 text-left font-semibold">项目阶段</th>
                     <th className="w-32 px-2 py-2 text-left font-semibold">时间</th>
                     <th className="w-40 px-2 py-2 text-left font-semibold">节点名称</th>
                     <th className="px-2 py-2 text-left font-semibold">成果</th>
@@ -134,6 +135,9 @@ export function ProgressPlanEditor({ value, onChange, readOnly, issues, upstream
                     const patch = (p: Partial<PlanNode>) => setNodes(row, patchById(nodes, n.id, p));
                     return (
                       <tr key={n.id} className={cn("border-t align-top", invalid.has(n.id) && "bg-destructive/5")}>
+                        <td className="px-1 py-1">
+                          <TextCell label={`${n.name || "节点"} 阶段`} placeholder="如：立项" value={n.phase ?? ""} onChange={(phase) => patch({ phase })} readOnly={readOnly} />
+                        </td>
                         <td className="px-1 py-1">
                           <NativeSelect size="sm" aria-label={`${n.name} 时间`} className="w-full" value={n.time} disabled={readOnly} onChange={(e) => patch({ time: e.target.value })}>
                             <NativeSelectOption value="">选择…</NativeSelectOption>

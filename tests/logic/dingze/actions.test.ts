@@ -143,3 +143,17 @@ describe("plan books (S3-07)", () => {
     ]);
   });
 });
+
+describe("charter codes as the book writes them", () => {
+  it.each(["2026OPSP001", "2024HR-P001", "2026-RP001"])("accepts %s", (code) => {
+    const c = goodCharter();
+    c.code = code;
+    expect(errors(validateCharterSet({ screening: [], charters: [c] }))).toEqual([]);
+  });
+
+  it("still rejects codes without the P and serial", () => {
+    const c = goodCharter();
+    c.code = "KP-01";
+    expect(errors(validateCharterSet({ screening: [], charters: [c] }))).toEqual([expect.stringContaining("项目编号应为")]);
+  });
+});

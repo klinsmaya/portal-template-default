@@ -41,6 +41,11 @@ export async function downloadPlanBookDocx(fileName: string, model: PlanBookMode
       spacing: { after: 360 },
       children: [new TextRun({ text: draft ? `${model.subtitle} · 草稿（未定版，仅供讨论）` : model.subtitle, size: 22, color: draft ? "B42318" : "5B6B73" })],
     }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 480 },
+      children: [new TextRun({ text: `编制时间：${new Date().toLocaleDateString("zh-CN")}`, size: 20, color: "5B6B73" })],
+    }),
   ];
 
   for (const chapter of model.chapters) {

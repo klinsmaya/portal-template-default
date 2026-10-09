@@ -95,13 +95,16 @@ export interface BudgetRow {
 
 export interface BudgetWorksheet {
   unit: string;
+  /** 预算编制说明 (表 3-6): assumptions and the basis the numbers rest on. */
+  basis: string;
   rows: BudgetRow[];
 }
 
-export const BUDGET_ITEMS = ['营业收入', '营业成本', '销售费用', '管理费用', '研发费用', '利润总额', '经营性现金流'];
+/** 表 3-6 年度经营预算主要内容: 收入、成本费用、人员、投资研发、现金流，再综合汇总。 */
+export const BUDGET_ITEMS = ['营业收入', '营业成本', '销售费用', '管理费用', '研发费用', '人员（人数 / 人工成本）', '投资预算', '利润总额', '经营性现金流'];
 
 export function emptyBudgetWorksheet(): BudgetWorksheet {
-  return { unit: '万元', rows: BUDGET_ITEMS.map((item) => ({ id: newRowId('b'), item, lastYear: '', budget: '', note: '' })) };
+  return { unit: '万元', basis: '', rows: BUDGET_ITEMS.map((item) => ({ id: newRowId('b'), item, lastYear: '', budget: '', note: '' })) };
 }
 
 export function validateBudgetWorksheet(sheet: BudgetWorksheet): Issue[] {
@@ -109,7 +112,10 @@ export function validateBudgetWorksheet(sheet: BudgetWorksheet): Issue[] {
   const done = rows.filter((r) => filled(r.budget));
   if (done.length === 0) return [{ level: 'error', message: '还没有填写任何预算数' }];
   const blanks = rows.filter((r) => filled(r.item) && !filled(r.budget));
-  return blanks.length ? [{ level: 'warning', message: `${blanks.map((r) => r.item).join('、')}还没有预算数` }] : [];
+  const issues: Issue[] = [];
+  if (!filled(sheet.basis)) issues.push({ level: 'warning', message: '还没有写预算编制说明：没有战略回顾和假设，不要直接切预算数字', anchor: 'basis' });
+  if (blanks.length) issues.push({ level: 'warning', message: `${blanks.map((r) => r.item).join('、')}还没有预算数` });
+  return issues;
 }
 
 // ── S2-01 年度战略解码地图 ──

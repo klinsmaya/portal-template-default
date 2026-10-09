@@ -31,7 +31,14 @@ describe("plan books", () => {
   it("has eight chapters with entered text and same-source tables copied from upstream", () => {
     const book = buildCompanyPlanBook({ enterprise: "DZ测试燃气", year: 2026, text: { ...emptyPlanBookText(), summary: "全年聚焦车用气" }, upstream });
     expect(book.chapters.map((c) => c.no)).toEqual(["一", "二", "三", "四", "五", "六", "七", "八"]);
-    expect(book.chapters[0].blocks).toEqual([{ kind: "text", text: "全年聚焦车用气" }]);
+    expect(book.chapters[0].blocks).toEqual(
+      expect.arrayContaining([
+        { kind: "heading", text: "1.1 总体战略目标与愿景承接" },
+        { kind: "text", text: "全年聚焦车用气" },
+        { kind: "heading", text: "1.2 本年度关键 KPI" },
+        { kind: "heading", text: "1.3 本年度关键项目清单及关键节点" },
+      ])
+    );
     expect(book.chapters[1].blocks).toEqual([{ kind: "text", text: "（待企业填写）" }]);
     const kpi = book.chapters[3].blocks[1];
     expect(kpi).toEqual({ kind: "table", headers: ["战略主题", "战略 KPI", "本年度目标"], rows: [["做强车用气", "车用气销量", "1100 万方"]] });

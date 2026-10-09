@@ -9,6 +9,8 @@ import {
   type ResourceMatch,
   classify,
   priorityScore,
+  timeColumns,
+  timeIndex,
   DECODE_CATEGORIES,
   type DecodeMap,
   type DeptUndertakingTable,
@@ -529,12 +531,14 @@ function charterSheets(set: ProjectCharterSet): SheetModel[] {
   return [screening, list, wbs];
 }
 
+/** 表 4-5 节点表 (one row per node) and 表 4-6 推进表 (成果 / 验收标准 per month or quarter). */
 function progressPlanSheets(plan: ProgressPlan): SheetModel[] {
-  const s = sheet("计划实施推进表", [
+  const nodesSheet = sheet("节点表（表4-5）", [
     ["项目", 24],
-    ["时间", 10],
+    ["项目阶段", 10],
     ["节点名称", 22],
-    ["成果", 28],
+    ["完成时间", 10],
+    ["节点成果", 28],
     ["验收标准", 28],
     ["责任人", 10],
     ["状态", 8],
@@ -542,12 +546,30 @@ function progressPlanSheets(plan: ProgressPlan): SheetModel[] {
   ]);
   const names = new Map((plan.rows ?? []).flatMap((r) => (r.nodes ?? []).map((n) => [n.id, n.name] as const)));
   for (const row of plan.rows ?? []) {
-    const start = s.rows.length;
+    const start = nodesSheet.rows.length;
     for (const n of row.nodes ?? [])
-      s.rows.push([row.name, n.time, n.name, n.deliverable, n.acceptance, n.owner, NODE_STATUS_LABELS[n.status] ?? n.status, (n.dependsOn ?? []).map((d) => names.get(d) ?? "").filter(Boolean).join("、")]);
-    if (s.rows.length - start > 1) s.merges.push([start, 0, s.rows.length - 1, 0]);
+      nodesSheet.rows.push([row.name, n.phase ?? "", n.name, n.time, n.deliverable, n.acceptance, n.owner, NODE_STATUS_LABELS[n.status] ?? n.status, (n.dependsOn ?? []).map((d) => names.get(d) ?? "").filter(Boolean).join("、")]);
+    if (nodesSheet.rows.length - start > 1) nodesSheet.merges.push([start, 0, nodesSheet.rows.length - 1, 0]);
   }
-  return [s];
+
+  const times = (plan.rows ?? []).flatMap((r) => (r.nodes ?? []).map((n) => n.time)).filter((t) => timeIndex(t) !== null);
+  const year = times.length ? Math.min(...times.map((t) => Number(t.slice(0, 4)))) : new Date().getFullYear();
+  const columns = timeColumns(plan.scale ?? "month", year);
+  const label = (c: string) => (plan.scale === "quarter" ? c.slice(5) : `${Number(c.slice(5))} 月`);
+  const progress = sheet("计划实施推进表（表4-6）", [
+    ["项目", 24],
+    ["责任人", 10],
+    ...columns.flatMap((c) => [[`${label(c)}成果`, 16] as [string, number], [`${label(c)}验收标准`, 16] as [string, number]]),
+  ]);
+  for (const row of plan.rows ?? []) {
+    const cells: Cell[] = [row.name, [...new Set((row.nodes ?? []).map((n) => n.owner).filter(Boolean))].join("、")];
+    for (const c of columns) {
+      const here = (row.nodes ?? []).filter((n) => timeIndex(n.time) === timeIndex(c));
+      cells.push(here.map((n) => `${n.name}：${n.deliverable}`).join("\n") || null, here.map((n) => n.acceptance).join("\n") || null);
+    }
+    progress.rows.push(cells);
+  }
+  return [nodesSheet, progress];
 }
 
 function resourceSheets(match: ResourceMatch, charters?: ProjectCharterSet): SheetModel[] {

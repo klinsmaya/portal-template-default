@@ -1,7 +1,7 @@
 import { ArrowRight, FolderKanban } from "lucide-react";
 import { Link } from "react-router";
 
-import { PROJECT_ROLE_LABELS } from "@dingze/shared";
+import { PROJECT_ROLE_LABELS, STAGES } from "@dingze/shared";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,13 +55,36 @@ export default function ProjectsPage() {
                   <CardDescription>{project.enterprise?.name ?? "未命名企业"}</CardDescription>
                   <CardTitle className="text-lg text-brand">{project.name}</CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <CardContent className="flex flex-col gap-3">
+                  {project.progress ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {STAGES.map((stage) => {
+                        const p = project.progress?.[stage.key] ?? { locked: 0, total: 0 };
+                        const pct = p.total ? Math.round((p.locked / p.total) * 100) : 0;
+                        return (
+                          <div key={stage.key} className="flex flex-col gap-1 text-xs">
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>{stage.name}</span>
+                              <span className="tabular-nums">
+                                {p.locked}/{p.total}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+                              <div className={pct === 100 ? "h-full bg-gold" : "h-full bg-brand"} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <span>{project.year} 年度</span>
                   <span>{SCENE_LABELS[project.scene] ?? project.scene}</span>
                   <span>{project.projectRole ? PROJECT_ROLE_LABELS[project.projectRole] : "管理员查看"}</span>
                   <span className="ml-auto inline-flex items-center gap-1 font-medium text-primary">
                     进入 <ArrowRight className="size-4" />
                   </span>
+                </div>
                 </CardContent>
               </Card>
             </Link>
