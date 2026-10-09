@@ -334,3 +334,22 @@
 body:has([data-dingze-coach]) [data-slot="ai-chat-drag-handle"] {
   display: none;
 }
+
+/* 定位到校验问题或批注所在的行：短暂高亮 */
+@keyframes dz-locate-flash {
+  0%,
+  60% {
+    outline-color: var(--gold, #c9a46a);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--gold, #c9a46a) 35%, transparent);
+  }
+  100% {
+    outline-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.dz-locate-flash {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+  animation: dz-locate-flash 1.8s ease-out;
+}

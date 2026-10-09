@@ -88,6 +88,11 @@ export function StepBar({ projectId, artifacts, stage, activeCode }: StepBarProp
                       {def.priority === "P1" ? " · 可跳过" : ""}
                     </span>
                   </span>
+                  {a?.openComments ? (
+                    <span className="shrink-0 rounded-full bg-gold/25 px-1.5 text-[11px] font-semibold text-brand" title={`${a.openComments} 条未解决批注`}>
+                      {a.openComments}
+                    </span>
+                  ) : null}
                   {unlocked && a ? (
                     <StatusBadge status={a.status} stale={a.stale} className="justify-end" />
                   ) : (

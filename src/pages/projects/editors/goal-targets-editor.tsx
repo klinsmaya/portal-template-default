@@ -96,7 +96,7 @@ export function GoalTargetsEditor({ value, onChange, readOnly, issues, upstream,
               </tr>
             ) : (
               goals.map((g) => (
-                <tr key={g.id} className={cn("border-t align-top", invalid.has(g.id) && "bg-destructive/5")}>
+                <tr data-anchor={g.id} key={g.id} className={cn("border-t align-top", invalid.has(g.id) && "bg-destructive/5")}>
                   <td className="px-1 py-1">
                     <NativeSelect
                       size="sm"

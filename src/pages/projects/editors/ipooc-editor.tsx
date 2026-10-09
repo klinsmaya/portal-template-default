@@ -74,7 +74,7 @@ export function IpoocEditor({ value, onChange, readOnly, issues, upstream }: Pro
       ) : null}
 
       {sheets.map((sheet, index) => (
-        <div key={sheet.id} className={cn("flex flex-col gap-3 rounded-xl border bg-card p-4", invalid.has(sheet.id) && "border-destructive/40")}>
+        <div data-anchor={sheet.id} key={sheet.id} className={cn("flex flex-col gap-3 rounded-xl border bg-card p-4", invalid.has(sheet.id) && "border-destructive/40")}>
           <div className="flex items-start gap-2">
             <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-[2fr_1fr_1fr]">
               <TextCell

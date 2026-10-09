@@ -84,7 +84,7 @@ export function KeyProjectsEditor({ value, onChange, readOnly, issues, upstream,
               </tr>
             ) : (
               projects.map((p) => (
-                <tr key={p.id} className={cn("border-t align-top", invalid.has(p.id) && "bg-destructive/5")}>
+                <tr data-anchor={p.id} key={p.id} className={cn("border-t align-top", invalid.has(p.id) && "bg-destructive/5")}>
                   {TEXT_COLUMNS.map((c) => (
                     <td key={c.key} className="px-1 py-1">
                       <TextCell

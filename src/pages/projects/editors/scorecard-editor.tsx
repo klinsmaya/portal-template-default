@@ -61,7 +61,7 @@ export function ScorecardEditor({ value, onChange, readOnly, issues, upstream }:
             {cards.map((c) => {
               const total = cardWeight(c);
               return (
-                <TabsTrigger key={c.deptId} value={c.deptId} className={cn(invalid.has(c.deptId) && "text-destructive")}>
+                <TabsTrigger data-anchor={c.deptId} key={c.deptId} value={c.deptId} className={cn(invalid.has(c.deptId) && "text-destructive")}>
                   {c.deptName}
                   <Badge variant={total === 100 ? "outline" : "destructive"} className="ml-1 tabular-nums">
                     {total}
@@ -113,7 +113,7 @@ export function ScorecardEditor({ value, onChange, readOnly, issues, upstream }:
                           </td>
                         );
                         return (
-                          <tr key={item.id} className={cn("border-t align-top", invalid.has(item.id) && "bg-destructive/5")}>
+                          <tr data-anchor={item.id} key={item.id} className={cn("border-t align-top", invalid.has(item.id) && "bg-destructive/5")}>
                             {COLUMNS.slice(0, 5).map(cell)}
                             <td className="px-1 py-1">
                               <Input

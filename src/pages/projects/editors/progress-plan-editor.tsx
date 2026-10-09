@@ -105,7 +105,7 @@ export function ProgressPlanEditor({ value, onChange, readOnly, issues, upstream
         </div>
       ) : (
         rows.map((row) => (
-          <div key={row.id} className={cn("overflow-hidden rounded-xl border bg-card", invalid.has(row.id) && "border-destructive/40")}>
+          <div data-anchor={row.id} key={row.id} className={cn("overflow-hidden rounded-xl border bg-card", invalid.has(row.id) && "border-destructive/40")}>
             <div className="flex items-center gap-2 bg-muted px-3 py-2">
               <TextCell label="项目" value={row.name} onChange={(name) => set(patchById(rows, row.id, { name }))} readOnly={readOnly} className="max-w-md font-semibold" />
               <span className="text-xs text-muted-foreground">{(row.nodes ?? []).length} 个节点</span>
@@ -134,7 +134,7 @@ export function ProgressPlanEditor({ value, onChange, readOnly, issues, upstream
                     const nodes = row.nodes ?? [];
                     const patch = (p: Partial<PlanNode>) => setNodes(row, patchById(nodes, n.id, p));
                     return (
-                      <tr key={n.id} className={cn("border-t align-top", invalid.has(n.id) && "bg-destructive/5")}>
+                      <tr data-anchor={n.id} key={n.id} className={cn("border-t align-top", invalid.has(n.id) && "bg-destructive/5")}>
                         <td className="px-1 py-1">
                           <TextCell label={`${n.name || "节点"} 阶段`} placeholder="如：立项" value={n.phase ?? ""} onChange={(phase) => patch({ phase })} readOnly={readOnly} />
                         </td>

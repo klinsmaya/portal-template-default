@@ -55,7 +55,9 @@ function Cell({
   invalid,
   tone = "default",
   className,
+  anchor,
 }: {
+  anchor?: string;
   label: string;
   hint?: string;
   value: string;
@@ -67,7 +69,7 @@ function Cell({
 }) {
   const id = useId();
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
+    <div data-anchor={anchor} className={cn("flex flex-col gap-1", className)}>
       <label htmlFor={id} className={cn("text-xs font-semibold", tone === "roof" ? "text-gold" : "text-muted-foreground")}>
         {label}
       </label>
@@ -107,9 +109,9 @@ function HouseView({ value, onChange, readOnly, issues }: EditorProps) {
         className="grid gap-3 bg-brand px-5 pt-16 pb-4 text-brand-foreground sm:grid-cols-3"
         style={{ clipPath: "polygon(50% 0, 100% 32%, 100% 100%, 0 100%, 0 32%)" }}
       >
-        <Cell tone="roof" label="使命" value={value.mission} onChange={(v) => set({ mission: v })} readOnly={readOnly} invalid={!!issueFor(issues, "mission")} />
-        <Cell tone="roof" label="愿景" value={value.vision} onChange={(v) => set({ vision: v })} readOnly={readOnly} invalid={!!issueFor(issues, "vision")} />
-        <Cell tone="roof" label="价值观" value={value.values} onChange={(v) => set({ values: v })} readOnly={readOnly} invalid={!!issueFor(issues, "values")} />
+        <Cell tone="roof" label="使命" value={value.mission} onChange={(v) => set({ mission: v })} readOnly={readOnly} anchor={"mission"} invalid={!!issueFor(issues, "mission")} />
+        <Cell tone="roof" label="愿景" value={value.vision} onChange={(v) => set({ vision: v })} readOnly={readOnly} anchor={"vision"} invalid={!!issueFor(issues, "vision")} />
+        <Cell tone="roof" label="价值观" value={value.values} onChange={(v) => set({ values: v })} readOnly={readOnly} anchor={"values"} invalid={!!issueFor(issues, "values")} />
       </div>
 
       <div className="overflow-x-auto border-x border-border">
@@ -126,7 +128,7 @@ function HouseView({ value, onChange, readOnly, issues }: EditorProps) {
                 value={value.goals[k]}
                 onChange={(v) => set({ goals: { ...value.goals, [k]: v } })}
                 readOnly={readOnly}
-                invalid={!!issueFor(issues, `goals.${k}`)}
+                anchor={`goals.${k}`} invalid={!!issueFor(issues, `goals.${k}`)}
               />
             ))}
           </div>
@@ -154,7 +156,7 @@ function HouseView({ value, onChange, readOnly, issues }: EditorProps) {
                       value={b[key]}
                       onChange={(v) => setBattlefield(b.id, { [key]: v })}
                       readOnly={readOnly}
-                      invalid={!!issueFor(issues, `battlefields.${b.id}.${key}`)}
+                      anchor={`battlefields.${b.id}.${key}`} invalid={!!issueFor(issues, `battlefields.${b.id}.${key}`)}
                     />
                   ))
                 )}
@@ -193,7 +195,7 @@ function HouseView({ value, onChange, readOnly, issues }: EditorProps) {
             value={value.foundation[k]}
             onChange={(v) => set({ foundation: { ...value.foundation, [k]: v } })}
             readOnly={readOnly}
-            invalid={!!issueFor(issues, `foundation.${k}`)}
+            anchor={`foundation.${k}`} invalid={!!issueFor(issues, `foundation.${k}`)}
           />
         ))}
       </div>
@@ -227,6 +229,7 @@ function SixfoldView({ value, onChange, readOnly, issues }: EditorProps) {
                   value={String(value[f.key] ?? "")}
                   readOnly={readOnly}
                   placeholder={readOnly ? "" : "填写，或写“待补”"}
+                  data-anchor={String(f.key)}
                   aria-invalid={!!issueFor(issues, String(f.key)) || undefined}
                   onChange={(e) => onChange({ ...value, [f.key]: e.target.value })}
                   className="min-h-14 resize-none"

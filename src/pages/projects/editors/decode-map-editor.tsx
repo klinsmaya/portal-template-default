@@ -77,7 +77,7 @@ export function DecodeMapEditor({ value, onChange, readOnly, issues, upstream }:
         <MapDiagram map={asStrategyMap(value)} label="年度战略解码地图" />
       ) : (
         <>
-          <div className={cn("grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-3", invalid.has("valueGap") && "border-destructive/40")}>
+          <div data-anchor={"valueGap"} className={cn("grid gap-3 rounded-xl border bg-card p-4 md:grid-cols-3", invalid.has("valueGap") && "border-destructive/40")}>
             <div className="text-sm font-semibold text-brand md:col-span-3">股东价值差距</div>
             {(
               [
@@ -114,7 +114,7 @@ export function DecodeMapEditor({ value, onChange, readOnly, issues, upstream }:
                 </div>
                 {items.length === 0 ? <p className="text-xs text-muted-foreground">还没有主题</p> : null}
                 {items.map((t) => (
-                  <div key={t.id} className={cn("flex flex-col gap-2 rounded-lg border p-3", invalid.has(t.id) && "border-destructive/40 bg-destructive/5")}>
+                  <div data-anchor={t.id} key={t.id} className={cn("flex flex-col gap-2 rounded-lg border p-3", invalid.has(t.id) && "border-destructive/40 bg-destructive/5")}>
                     <div className="flex items-start gap-2">
                       <div className="grid min-w-0 flex-1 gap-2 md:grid-cols-[10rem_1.4fr_1fr_0.8fr]">
                         <NativeSelect

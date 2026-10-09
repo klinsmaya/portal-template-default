@@ -65,7 +65,7 @@ export function StrategyKpiEditor({ value, onChange, readOnly, issues, upstream 
               </tr>
             ) : (
               kpis.map((kpi) => (
-                <tr key={kpi.id} className={cn("border-t align-top", invalid.has(kpi.id) && "bg-destructive/5")}>
+                <tr data-anchor={kpi.id} key={kpi.id} className={cn("border-t align-top", invalid.has(kpi.id) && "bg-destructive/5")}>
                   {COLUMNS.map((c) => (
                     <td key={c.key} className="px-1 py-1">
                       <TextCell

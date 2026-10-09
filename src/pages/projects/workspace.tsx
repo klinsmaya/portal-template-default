@@ -1,6 +1,7 @@
-import { ArrowRight, History, Lock, Save } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, useParams } from "react-router";
+import { ArrowRight, History, Lock, Redo2, Save, Undo2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, Navigate, useParams, useSearchParams } from "react-router";
+import { useGetIdentity } from "@refinedev/core";
 import { toast } from "sonner";
 
 import {
@@ -23,8 +24,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { nextStep, workspacePath } from "@/lib/dingze/progress";
 import { useArtifactDetail, useSaveArtifact, useUpstreamPayloads } from "@/lib/dingze/queries";
+import { useComments } from "@/lib/dingze/comments-api";
+import { initHistory, recordDraft, redoDraft, undoDraft } from "@/lib/dingze/draft-history";
 import { nextArtifact } from "@/lib/dingze/next-step";
 import { useRecordExport } from "@/lib/dingze/records-queries";
+import { cn } from "@/lib/utils";
 
 import { EDITABLE_CODES, emptyPayload } from "@/lib/dingze/artifact-payloads";
 import { type ProposedChange, applyChanges } from "@/lib/dingze/changes";
@@ -38,6 +42,7 @@ import { PlanBookExportButton } from "./components/plan-book-export";
 import { StepBar } from "./components/step-bar";
 import { ValidationBar } from "./components/validation-bar";
 import { BookMethod } from "./components/book-method";
+import { CommentMarkers, CommentsPanel } from "./components/comments-panel";
 import { ArtifactEditor } from "./editors/artifact-editor";
 import { useProjectContext } from "./project-context";
 
@@ -82,15 +87,27 @@ function Workspace({ code }: { code: string }) {
   const serverPayload =
     artifact?.currentVersion?.payload ?? emptyPayload(code, project);
   const serverRev = artifact?.currentRev ?? 0;
-  const [draft, setDraft] = useState<unknown>(serverPayload);
+  const [history, setHistory] = useState(() => initHistory<unknown>(serverPayload));
+  const draft = history.present;
+  const setDraft = useCallback((next: unknown) => setHistory((h) => recordDraft(h, next, Date.now())), []);
+  const resetDraft = useCallback((value: unknown) => setHistory(initHistory(value)), []);
+  const undo = useCallback(() => setHistory((h) => undoDraft(h)), []);
+  const redo = useCallback(() => setHistory((h) => redoDraft(h)), []);
   const [baseRev, setBaseRev] = useState(serverRev);
   const dirty = JSON.stringify(draft) !== JSON.stringify(serverPayload);
   const recordExport = useRecordExport(project);
+  const [searchParams] = useSearchParams();
+  const highlightComment = Number(searchParams.get("comment")) || null;
+  const [asideTab, setAsideTab] = useState<"coach" | "comments">(highlightComment ? "comments" : "coach");
+  const [focusAnchor, setFocusAnchor] = useState<string | null>(null);
+  const identity = useGetIdentity<{ id: number }>();
+  const comments = useComments(project, code);
+  const openThreads = (comments.data ?? []).filter((t) => !t.resolved);
 
   // Adopt the server version when it changes and nothing local is pending.
   useEffect(() => {
     if (!dirty || serverRev !== baseRev) {
-      setDraft(serverPayload);
+      resetDraft(serverPayload);
       setBaseRev(serverRev);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,13 +176,26 @@ function Workspace({ code }: { code: string }) {
   saveShortcut.current = onSave;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") return;
-      event.preventDefault();
-      if (canSave && dirty && !save.isPending) saveShortcut.current();
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "s") {
+        event.preventDefault();
+        if (canSave && dirty && !save.isPending) saveShortcut.current();
+        return;
+      }
+      // Undo / redo of the table; the chat box keeps its own text undo.
+      if (!canSave || (event.target as HTMLElement | null)?.closest?.("[data-dingze-coach]")) return;
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        redo();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [canSave, dirty, save.isPending]);
+  }, [canSave, dirty, save.isPending, undo, redo]);
   const next = useMemo(() => nextArtifact(code, overview.artifacts), [code, overview.artifacts]);
 
   // The digital consultant reads the live draft and proposes changes through a frontend
@@ -307,6 +337,11 @@ function Workspace({ code }: { code: string }) {
 
         <main
           ref={page.ref}
+          data-dingze-main
+          onFocusCapture={(event) => {
+            const anchor = (event.target as HTMLElement).closest?.("[data-anchor]")?.getAttribute("data-anchor");
+            if (anchor) setFocusAnchor(anchor);
+          }}
           className="flex min-w-0 flex-[999_1_560px] flex-col gap-4 p-4 md:p-6"
         >
           <div className="sticky top-0 z-20 -mx-4 -mt-4 flex flex-col gap-1 border-b bg-background/95 px-4 pt-3 pb-3 backdrop-blur md:-mx-6 md:-mt-6 md:px-6 md:pt-4">
@@ -355,6 +390,16 @@ function Workspace({ code }: { code: string }) {
                 dirty={dirty}
                 onExported={recordExport}
               />
+              {canSave ? (
+                <div className="flex">
+                  <Button variant="ghost" size="icon" aria-label="撤销" title="撤销（Ctrl / ⌘ + Z）" disabled={!history.past.length} onClick={undo}>
+                    <Undo2 />
+                  </Button>
+                  <Button variant="ghost" size="icon" aria-label="重做" title="重做（Ctrl / ⌘ + Shift + Z）" disabled={!history.future.length} onClick={redo}>
+                    <Redo2 />
+                  </Button>
+                </div>
+              ) : null}
               {canSave ? (
                 <Button
                   variant={dirty ? "default" : "outline"}
@@ -511,10 +556,45 @@ function Workspace({ code }: { code: string }) {
             </summary>
             <BookMethod def={def} />
           </details>
-          <CoachPanel
-            stage={def.stage}
-            chatId={`dingze-${project.id}-${code}`}
-          />
+          <div role="tablist" aria-label="右侧面板" className="flex gap-0.5 rounded-xl bg-muted p-1 text-sm">
+            {(
+              [
+                ["coach", "数字咨询师"],
+                ["comments", `批注${openThreads.length ? ` · ${openThreads.length}` : ""}`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={asideTab === key}
+                onClick={() => setAsideTab(key)}
+                className={cn("flex min-h-9 flex-1 items-center justify-center rounded-lg", asideTab === key ? "bg-card font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className={cn("flex flex-1 flex-col", asideTab !== "coach" && "hidden")}>
+            <CoachPanel
+              stage={def.stage}
+              chatId={`dingze-${project.id}-${code}`}
+            />
+          </div>
+          <div className={cn(asideTab !== "comments" && "hidden")}>
+            <CommentsPanel
+              project={project}
+              code={code}
+              payload={draft}
+              team={overview.team ?? []}
+              canComment={overview.isConsultAdmin || (!!role && role !== "readonly")}
+              canResolveAny={overview.isConsultAdmin || role === "ent_lead" || role === "lead_consultant"}
+              currentUserId={identity.data?.id ?? null}
+              focusAnchor={focusAnchor}
+              highlightId={highlightComment}
+            />
+          </div>
+          <CommentMarkers anchors={openThreads.map((t) => t.anchor).filter((a): a is string => !!a)} />
         </aside>
       </div>
     </AIPageContextScope>

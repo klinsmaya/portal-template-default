@@ -88,7 +88,7 @@ export function MissionWorksheetEditor({
           value={value.statement}
           onChange={(statement) => set({ statement })}
           readOnly={readOnly}
-          invalid={invalid.has("statement")}
+          anchor={"statement"} invalid={invalid.has("statement")}
         />
       </Field>
     </section>
@@ -142,7 +142,7 @@ export function VisionWorksheetEditor({
           <TextCell label="愿景时间跨度" placeholder="通常 7—10 年" value={value.horizon} onChange={(horizon) => set({ horizon })} readOnly={readOnly} />
         </Field>
         <Field label="愿景句" hint="定稿后写回战略屋的“愿景”">
-          <TextCell label="愿景句" multiline value={value.statement} onChange={(statement) => set({ statement })} readOnly={readOnly} invalid={invalid.has("statement")} />
+          <TextCell label="愿景句" multiline value={value.statement} onChange={(statement) => set({ statement })} readOnly={readOnly} anchor={"statement"} invalid={invalid.has("statement")} />
         </Field>
       </div>
     </section>

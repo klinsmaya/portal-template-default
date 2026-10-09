@@ -72,7 +72,7 @@ export function ResourceMatchEditor({ value, onChange, readOnly, issues, upstrea
                 </thead>
                 <tbody>
                   {own.map((r) => (
-                    <tr key={r.id} className={cn("border-t align-top", invalid.has(r.id) && "bg-destructive/5", r.none && "text-muted-foreground")}>
+                    <tr data-anchor={r.id} key={r.id} className={cn("border-t align-top", invalid.has(r.id) && "bg-destructive/5", r.none && "text-muted-foreground")}>
                       <td className="px-1 py-1">
                         <NativeSelect size="sm" aria-label="资源类别" value={r.category} disabled={readOnly} onChange={(e) => set(patchById(rows, r.id, { category: e.target.value as ResourceCategory }))}>
                           {RESOURCE_CATEGORIES.map((c) => (

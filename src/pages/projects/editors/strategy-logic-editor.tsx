@@ -66,6 +66,7 @@ export function StrategyLogicEditor({ value, onChange, readOnly, issues, upstrea
           {strategies.map((line, index) => (
             <div
               key={line.id}
+              data-anchor={line.id}
               className={cn(
                 "grid min-w-[720px] grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] border-b last:border-b-0",
                 invalid.has(line.id) && "bg-destructive/5"
@@ -80,7 +81,7 @@ export function StrategyLogicEditor({ value, onChange, readOnly, issues, upstrea
                   value={line.statement}
                   onChange={(statement) => setLine(line.id, { statement })}
                   readOnly={readOnly}
-                  invalid={invalid.has(line.id)}
+                  anchor={line.id} invalid={invalid.has(line.id)}
                 />
                 <RowActions
                   label={`战略 ${index + 1}`}
@@ -98,7 +99,7 @@ export function StrategyLogicEditor({ value, onChange, readOnly, issues, upstrea
                       value={tactic.text}
                       onChange={(text) => setLine(line.id, { tactics: patchById(line.tactics, tactic.id, { text }) })}
                       readOnly={readOnly}
-                      invalid={invalid.has(tactic.id)}
+                      anchor={tactic.id} invalid={invalid.has(tactic.id)}
                     />
                     <TextCell
                       label={`策略 ${t + 1} 的路径`}

@@ -102,7 +102,7 @@ export function KpiBreakdownEditor({ value, onChange, readOnly, issues, upstream
               rows.map((row) => {
                 const label = row.name || "战略 KPI";
                 return (
-                  <tr key={row.id} className={cn("border-t align-top", invalid.has(row.id) && "bg-destructive/5")}>
+                  <tr data-anchor={row.id} key={row.id} className={cn("border-t align-top", invalid.has(row.id) && "bg-destructive/5")}>
                     <td className="px-1 py-1">
                       <TextCell label={`${label} 战略主题`} value={row.theme} onChange={(theme) => setRows(patchById(rows, row.id, { theme }))} readOnly={readOnly} />
                     </td>

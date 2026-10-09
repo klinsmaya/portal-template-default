@@ -19,6 +19,7 @@ import {
   validateArtifact,
 } from '../../shared';
 import { HttpError, type ProjectContext, currentUserId } from './access';
+import { openCommentCounts } from './comments';
 import { notifyTransition } from './notify';
 
 const LIFECYCLE_HTTP: Record<LifecycleError['code'], number> = {
@@ -353,6 +354,7 @@ export async function projectOverview(ctx: Context, pc: ProjectContext) {
   const byCode = new Map(rows.map((r: any) => [r.get('code'), r]));
   const states = await loadStates(ctx, projectId);
   // Departments and the project team feed RACI columns, undertakings and owner pickers.
+  const comments = await openCommentCounts(ctx, projectId);
   const [orgUnits, members] = await Promise.all([
     ctx.db.getRepository('dz_org_units').find({
       filter: { enterpriseId: pc.project.get('enterpriseId') },
@@ -389,6 +391,7 @@ export async function projectOverview(ctx: Context, pc: ProjectContext) {
         currentRev: row?.get('currentRev') ?? 0,
         updatedAt: row?.get('updatedAt') ?? null,
         unlock: unlockInfo(def, states),
+        openComments: comments[def.code] ?? 0,
       };
     }),
   };

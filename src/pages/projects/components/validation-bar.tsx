@@ -1,14 +1,38 @@
-import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, LocateFixed, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import type { Issue } from "@dingze/shared";
 
+import { locateAnchor } from "@/lib/dingze/locate";
 import { cn } from "@/lib/utils";
 
-/** Errors block “本步完成” and confirmation; warnings never block (Q3). */
+function IssueItem({ issue }: { issue: Issue }) {
+  if (!issue.anchor) return <li>{issue.message}</li>;
+  return (
+    <li>
+      <button
+        type="button"
+        className="inline-flex items-start gap-1 text-left underline decoration-dotted underline-offset-4 hover:decoration-solid"
+        title="定位到这一行"
+        onClick={() => {
+          if (!locateAnchor(issue.anchor!)) toast.info("这一条针对整张表，或所在行当前未展开");
+        }}
+      >
+        <LocateFixed className="mt-0.5 size-3.5 shrink-0 opacity-70" />
+        {issue.message}
+      </button>
+    </li>
+  );
+}
+
+/** Errors block “本步完成” and confirmation; warnings never block (Q3). Each issue with an anchor jumps to its row. */
 export function ValidationBar({ issues, hasRules }: { issues: Issue[]; hasRules: boolean }) {
+  const [showAllWarnings, setShowAllWarnings] = useState(false);
   const errors = issues.filter((i) => i.level === "error");
   const warnings = issues.filter((i) => i.level === "warning");
   if (!hasRules) return null;
+  const shownWarnings = showAllWarnings ? warnings : warnings.slice(0, 3);
 
   return (
     <section
@@ -23,20 +47,32 @@ export function ValidationBar({ issues, hasRules }: { issues: Issue[]; hasRules:
     >
       <div className="flex items-center gap-2 font-semibold">
         {errors.length ? <CircleAlert className="size-4" /> : <CircleCheck className="size-4" />}
-        {errors.length ? `还差 ${errors.length} 处才能“本步完成”——草稿可以先保存` : "结构校验通过"}
+        {errors.length ? `还差 ${errors.length} 处才能“本步完成”——草稿可以先保存；点问题可定位` : "结构校验通过"}
       </div>
       {errors.length ? (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1">
-          {errors.slice(0, 8).map((issue, i) => (
-            <li key={`${issue.anchor}-${i}`}>{issue.message}</li>
+        <ul className="flex flex-col gap-1">
+          {errors.slice(0, 12).map((issue, i) => (
+            <IssueItem key={`${issue.anchor}-${i}`} issue={issue} />
           ))}
-          {errors.length > 8 ? <li>……另有 {errors.length - 8} 处</li> : null}
+          {errors.length > 12 ? <li>……另有 {errors.length - 12} 处</li> : null}
         </ul>
       ) : null}
       {warnings.length ? (
-        <div className="flex items-start gap-2 text-xs opacity-90">
-          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-          <span>提示（不阻断）：{warnings.slice(0, 3).map((w) => w.message).join("；")}{warnings.length > 3 ? ` 等 ${warnings.length} 条` : ""}</span>
+        <div className="flex flex-col gap-1 text-xs opacity-90">
+          <div className="flex items-center gap-2">
+            <TriangleAlert className="size-3.5 shrink-0" />
+            <span>提示（不阻断）{warnings.length} 条</span>
+            {warnings.length > 3 ? (
+              <button type="button" className="underline" onClick={() => setShowAllWarnings((v) => !v)}>
+                {showAllWarnings ? "收起" : "全部展开"}
+              </button>
+            ) : null}
+          </div>
+          <ul className="flex flex-col gap-0.5 pl-5">
+            {shownWarnings.map((issue, i) => (
+              <IssueItem key={`${issue.anchor}-w${i}`} issue={issue} />
+            ))}
+          </ul>
         </div>
       ) : null}
     </section>

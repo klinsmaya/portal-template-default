@@ -104,7 +104,7 @@ export function RaciEditor({ value, onChange, readOnly, issues, upstream, orgUni
             <tr>
               <th className="sticky left-0 min-w-56 bg-muted px-2 py-2 text-left font-semibold">关键项目 / 路径</th>
               {columns.map((c) => (
-                <th key={c.id} className={cn("min-w-32 px-2 py-2 text-center font-semibold", invalid.has(c.id) && "text-destructive")}>
+                <th data-anchor={c.id} key={c.id} className={cn("min-w-32 px-2 py-2 text-center font-semibold", invalid.has(c.id) && "text-destructive")}>
                   <div className="flex items-center justify-center gap-1">
                     {c.name}
                     {!readOnly ? (
@@ -131,7 +131,7 @@ export function RaciEditor({ value, onChange, readOnly, issues, upstream, orgUni
                 const a = columns.filter((c) => (row.cells?.[c.id] ?? []).includes("A")).length;
                 const r = columns.filter((c) => (row.cells?.[c.id] ?? []).includes("R")).length;
                 return (
-                  <tr key={row.id} className={cn("border-t align-middle", invalid.has(row.id) && "bg-destructive/5")}>
+                  <tr data-anchor={row.id} key={row.id} className={cn("border-t align-middle", invalid.has(row.id) && "bg-destructive/5")}>
                     <td className="sticky left-0 bg-card px-1 py-1">
                       <TextCell label="行名称" value={row.name} onChange={(name) => onChange({ ...value, rows: rows.map((x) => (x.id === row.id ? { ...x, name } : x)) })} readOnly={readOnly} />
                     </td>

@@ -86,7 +86,7 @@ export function KpiScreeningEditor({ value, onChange, readOnly, issues, upstream
               candidates.map((c) => {
                 const total = candidateTotal(c);
                 return (
-                  <tr key={c.id} className={cn("border-t align-top", invalid.has(c.id) && "bg-destructive/5", c.keep === false && "text-muted-foreground")}>
+                  <tr data-anchor={c.id} key={c.id} className={cn("border-t align-top", invalid.has(c.id) && "bg-destructive/5", c.keep === false && "text-muted-foreground")}>
                     <td className="px-1 py-1">
                       <TextCell label="候选指标" value={c.name} onChange={(name) => set(patchById(candidates, c.id, { name }))} readOnly={readOnly} />
                       {c.origin ? <div className="px-1 pt-1 text-[11px] text-muted-foreground">{c.origin}</div> : null}

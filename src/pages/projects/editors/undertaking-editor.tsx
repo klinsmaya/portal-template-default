@@ -79,7 +79,7 @@ export function UndertakingEditor({ value, onChange, readOnly, issues, upstream 
               </tr>
             ) : (
               sorted.map((r) => (
-                <tr key={r.id} className={cn("border-t align-top", invalid.has(r.id) && "bg-destructive/5")}>
+                <tr data-anchor={r.id} key={r.id} className={cn("border-t align-top", invalid.has(r.id) && "bg-destructive/5")}>
                   <td className="px-1 py-1">
                     <NativeSelect
                       size="sm"

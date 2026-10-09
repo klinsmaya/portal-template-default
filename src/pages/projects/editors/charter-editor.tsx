@@ -100,7 +100,7 @@ export function CharterEditor({ value, onChange, readOnly, issues, upstream, pro
                   const cls = classify(s.answers);
                   const hasCharter = charters.some((c) => c.screeningId === s.id);
                   return (
-                    <tr key={s.id} className={cn("border-t align-top", invalid.has(s.id) && "bg-destructive/5")}>
+                    <tr data-anchor={s.id} key={s.id} className={cn("border-t align-top", invalid.has(s.id) && "bg-destructive/5")}>
                       <td className="px-1 py-1">
                         <TextCell label="事项" value={s.name} onChange={(name) => setScreening(patchById(screening, s.id, { name }))} readOnly={readOnly} />
                         <div className="px-1 pt-0.5 text-[11px] text-muted-foreground">
@@ -221,7 +221,7 @@ function CharterCard({
   );
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className={cn("rounded-xl border bg-card", invalid.has(c.id) && "border-destructive/40")}>
+    <Collapsible data-anchor={c.id} open={open} onOpenChange={setOpen} className={cn("rounded-xl border bg-card", invalid.has(c.id) && "border-destructive/40")}>
       <div className="flex items-center gap-2 px-4 py-3">
         <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <ChevronDown className={cn("size-4 shrink-0 transition-transform", !open && "-rotate-90")} />
@@ -421,7 +421,7 @@ function WbsTable({ wbs, onChange, readOnly, invalid }: { wbs: WbsPackage[]; onC
               </tr>
             ) : (
               ordered.map((w) => (
-                <tr key={w.id} className={cn("border-t align-top", invalid.has(w.id) && "bg-destructive/5")}>
+                <tr data-anchor={w.id} key={w.id} className={cn("border-t align-top", invalid.has(w.id) && "bg-destructive/5")}>
                   <td className="px-1 py-1">
                     <div className="flex items-start gap-1" style={{ paddingLeft: `${(w.level - 1) * 1.25}rem` }}>
                       {w.level > 1 ? <CornerDownRight className="mt-2.5 size-3.5 shrink-0 text-muted-foreground" /> : null}

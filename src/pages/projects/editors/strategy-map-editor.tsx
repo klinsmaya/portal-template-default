@@ -83,7 +83,7 @@ export function StrategyMapEditor({ value, onChange, readOnly, issues, upstream 
                             value={o.title}
                             onChange={(title) => setObjectives(patchById(objectives, o.id, { title }))}
                             readOnly={readOnly}
-                            invalid={invalid.has(o.id)}
+                            anchor={o.id} invalid={invalid.has(o.id)}
                           />
                           <TextCell
                             label={`${p.label}目标说明`}
@@ -131,6 +131,7 @@ export function StrategyMapEditor({ value, onChange, readOnly, issues, upstream 
                 {links.map((link) => (
                   <li
                     key={link.id}
+                    data-anchor={link.id}
                     className={cn(
                       "grid items-center gap-2 border-b px-3 py-2 last:border-b-0 md:grid-cols-[1fr_auto_1fr_auto]",
                       invalid.has(link.id) && "bg-destructive/5"

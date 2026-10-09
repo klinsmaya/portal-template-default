@@ -14,6 +14,7 @@ import {
   transitionArtifact,
 } from './services/artifacts';
 import { consultantBoard } from './services/board';
+import { addComment, listComments, resolveComment } from './services/comments';
 import { markNotificationsRead, myNotifications } from './services/notify';
 import { artifactHistory, artifactRegistry, deliveryBundle, recordExport, versionDiff } from './services/registry';
 import { createProject, listEnterprises, myProjects, provisionEnterprise, setProjectMembers } from './services/enterprises';
@@ -121,6 +122,20 @@ export class PluginDingzeServer extends Plugin {
           const v = values(ctx);
           const pc = await loadProjectContext(ctx, v.projectId);
           return recordExport(ctx, pc, requireArtifactDef(v.code), v);
+        }),
+        listComments: action(async (ctx) => {
+          const pc = await loadProjectContext(ctx, ctx.action.params.projectId);
+          return listComments(ctx, pc, requireArtifactDef(ctx.action.params.code));
+        }),
+        addComment: action(async (ctx) => {
+          const v = values(ctx);
+          const pc = await loadProjectContext(ctx, v.projectId);
+          return addComment(ctx, pc, requireArtifactDef(v.code), v);
+        }),
+        resolveComment: action(async (ctx) => {
+          const v = values(ctx);
+          const pc = await loadProjectContext(ctx, v.projectId);
+          return resolveComment(ctx, pc, v);
         }),
         myNotifications: action((ctx) => myNotifications(ctx, ctx.action.params as any)),
         markNotificationsRead: action((ctx) => markNotificationsRead(ctx, values(ctx))),

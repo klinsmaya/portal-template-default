@@ -68,7 +68,9 @@ function BookBody({
   onText,
   readOnly,
   invalid,
+  anchor,
 }: {
+  anchor?: string;
   model: PlanBookModel;
   text: PlanBookText;
   onText: (next: PlanBookText) => void;
@@ -76,7 +78,7 @@ function BookBody({
   invalid: boolean;
 }) {
   return (
-    <div className={cn("flex flex-col gap-4", invalid && "rounded-xl ring-1 ring-destructive/40")}>
+    <div data-anchor={anchor} className={cn("flex flex-col gap-4", invalid && "rounded-xl ring-1 ring-destructive/40")}>
       {model.chapters.map((chapter) => {
         const fields = ENTERED[chapter.no] ?? [];
         return (
@@ -132,7 +134,7 @@ export function CompanyPlanBookEditor({
   return (
     <section aria-label="公司级年度经营计划书" className="flex flex-col gap-4">
       <EditorToolbar hint={HINT} />
-      <BookBody model={model} text={text} onText={(t) => onChange({ text: t })} readOnly={readOnly} invalid={errorAnchors(issues).has("text")} />
+      <BookBody model={model} text={text} onText={(t) => onChange({ text: t })} readOnly={readOnly} anchor="text" invalid={errorAnchors(issues).has("text")} />
     </section>
   );
 }
@@ -177,7 +179,7 @@ export function DeptPlanBookEditor({
         <Tabs value={active} onValueChange={(v) => setTab(String(v))}>
           <TabsList className="flex-wrap">
             {depts.map((d) => (
-              <TabsTrigger key={d.deptId} value={d.deptId} className={cn(invalid.has(d.deptId) && "text-destructive")}>
+              <TabsTrigger data-anchor={d.deptId} key={d.deptId} value={d.deptId} className={cn(invalid.has(d.deptId) && "text-destructive")}>
                 {d.deptName}
               </TabsTrigger>
             ))}
@@ -193,7 +195,7 @@ export function DeptPlanBookEditor({
                   text={text}
                   onText={(t) => onChange({ depts: depts.map((x) => (x.deptId === deptId ? { id: deptId, deptId, deptName, ...t } : x)) })}
                   readOnly={readOnly}
-                  invalid={invalid.has(deptId)}
+                  anchor={deptId} invalid={invalid.has(deptId)}
                 />
               </TabsContent>
             );

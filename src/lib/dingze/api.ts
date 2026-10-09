@@ -55,6 +55,8 @@ export async function listMyProjects(spaces: MySpaces): Promise<ProjectSummary[]
 }
 
 export type ArtifactOverview = {
+  /** Unresolved comment threads. */
+  openComments?: number;
   code: string;
   status: ArtifactStatus;
   stale: boolean;

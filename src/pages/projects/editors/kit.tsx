@@ -18,7 +18,10 @@ export function TextCell({
   multiline = false,
   placeholder,
   className,
+  anchor,
 }: {
+  /** Issue / comment anchor (row or field id) so the cell can be scrolled to. */
+  anchor?: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -33,6 +36,7 @@ export function TextCell({
     return (
       <div
         aria-label={label}
+        data-anchor={anchor}
         className={cn("min-h-9 rounded-md px-2 py-1.5 text-sm whitespace-pre-wrap", text ? "text-foreground" : "text-muted-foreground/60", text === "待补" && pendingTone, className)}
       >
         {text || "—"}
@@ -40,6 +44,7 @@ export function TextCell({
     );
   }
   const shared = {
+    "data-anchor": anchor,
     "aria-label": label,
     value: value ?? "",
     readOnly,

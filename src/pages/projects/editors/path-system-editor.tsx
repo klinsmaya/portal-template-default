@@ -118,7 +118,7 @@ export function PathSystemEditor({ value, onChange, readOnly, issues, goals, goa
           {goals.map((goal) => {
             const rows = byGoal(goal.id);
             return (
-              <div key={goal.id} className={cn("overflow-hidden rounded-xl border bg-card", invalid.has(goal.id) && "border-destructive/40")}>
+              <div data-anchor={goal.id} key={goal.id} className={cn("overflow-hidden rounded-xl border bg-card", invalid.has(goal.id) && "border-destructive/40")}>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-brand px-4 py-2.5 text-brand-foreground">
                   {goal.group ? <Badge className="bg-gold text-brand">{goal.group}</Badge> : null}
                   <span className="font-heading font-bold">{goal.label}</span>
@@ -185,7 +185,7 @@ function PathRows({
             const roll = rollUp(n, nodes);
             const label = n.path || LEVEL_LABELS[n.level] || "路径";
             return (
-              <tr key={n.id} className={cn("border-t align-top", invalid.has(n.id) && "bg-destructive/5")}>
+              <tr data-anchor={n.id} key={n.id} className={cn("border-t align-top", invalid.has(n.id) && "bg-destructive/5")}>
                 <td className="px-1 py-1">
                   <div className="flex items-start gap-1" style={{ paddingLeft: `${(n.level - 1) * 1.25}rem` }}>
                     {n.level > 1 ? <CornerDownRight className="mt-2.5 size-3.5 shrink-0 text-muted-foreground" /> : null}
