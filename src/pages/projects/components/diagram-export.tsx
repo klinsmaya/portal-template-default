@@ -2,22 +2,14 @@ import { ChevronDown, ImageDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { STATUS_LABELS, type ArtifactStatus, type StrategyContent, type StrategyMap } from "@dingze/shared";
+import { STATUS_LABELS, type ArtifactStatus } from "@dingze/shared";
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { downloadDiagram } from "@/lib/dingze/diagram-image";
-import { type SvgDiagram, strategyContentSvg, strategyMapSvg } from "@/lib/dingze/diagram-svg";
+import { artifactDiagram } from "@/lib/dingze/diagram-svg";
 import { errorMessage } from "@/lib/dingze/errors";
 import type { ExportInfo } from "@/lib/dingze/records-api";
-
-/** The diagram of an artifact that has one: S1-01 (战略屋 / 六分法) and S1-02 (战略地图). */
-export function artifactDiagram(code: string, payload: unknown, subtitle?: string): SvgDiagram | null {
-  if (!payload || typeof payload !== "object") return null;
-  if (code === "S1-01") return strategyContentSvg(payload as StrategyContent, subtitle);
-  if (code === "S1-02") return strategyMapSvg(payload as StrategyMap, subtitle);
-  return null;
-}
 
 /** Saves the saved version's diagram as SVG or PNG; drafts carry 草稿 in the subtitle. */
 export function DiagramExportButton({

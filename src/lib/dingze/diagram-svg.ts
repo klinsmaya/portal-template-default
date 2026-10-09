@@ -227,3 +227,11 @@ export function strategyMapSvg(map: StrategyMap, subtitle?: string, title = "战
   body += textLines(["横向协同"], 300, legendY, { size: 12, color: C.sub });
   return wrap(WIDTH, legendY + 20, body, title);
 }
+
+/** The diagram of an artifact that has one: S1-01 (战略屋 / 六分法) and S1-02 (战略地图). */
+export function artifactDiagram(code: string, payload: unknown, subtitle?: string): SvgDiagram | null {
+  if (!payload || typeof payload !== "object") return null;
+  if (code === "S1-01") return strategyContentSvg(payload as StrategyContent, subtitle);
+  if (code === "S1-02") return strategyMapSvg(payload as StrategyMap, subtitle);
+  return null;
+}
