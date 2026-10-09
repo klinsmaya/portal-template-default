@@ -1,0 +1,124 @@
+import { ArrowDown, ArrowUp, Import, Plus, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+const pendingTone = "border-suggestion-border bg-suggestion text-suggestion-foreground";
+
+/** A compact table cell editor; “待补” renders in the suggestion tone. */
+export function TextCell({
+  label,
+  value,
+  onChange,
+  readOnly,
+  invalid,
+  multiline = false,
+  placeholder,
+  className,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  readOnly: boolean;
+  invalid?: boolean;
+  multiline?: boolean;
+  placeholder?: string;
+  className?: string;
+}) {
+  const shared = {
+    "aria-label": label,
+    value: value ?? "",
+    readOnly,
+    "aria-invalid": invalid || undefined,
+    placeholder: readOnly ? "" : (placeholder ?? ""),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
+    className: cn((value ?? "").trim() === "待补" && pendingTone, className),
+  };
+  return multiline ? (
+    <Textarea {...shared} className={cn("min-h-16 resize-y", shared.className)} />
+  ) : (
+    <Input {...shared} />
+  );
+}
+
+export function EditorToolbar({ children, hint }: { children?: ReactNode; hint?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-xs text-muted-foreground">{hint}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+export function AddButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <Button type="button" variant="outline" size="sm" onClick={onClick} disabled={disabled}>
+      <Plus /> {label}
+    </Button>
+  );
+}
+
+/** “从上游带入”: only offered when the upstream has something new to bring. */
+export function ImportButton({
+  label,
+  count,
+  onClick,
+  readOnly,
+}: {
+  label: string;
+  count: number;
+  onClick: () => void;
+  readOnly: boolean;
+}) {
+  if (readOnly) return null;
+  return (
+    <Button type="button" variant="outline" size="sm" onClick={onClick} disabled={count === 0} title={count === 0 ? "上游没有新的内容可带入" : undefined}>
+      <Import /> {label}
+      {count > 0 ? `（${count}）` : ""}
+    </Button>
+  );
+}
+
+export function RowActions({
+  label,
+  onRemove,
+  onMove,
+  readOnly,
+}: {
+  label: string;
+  onRemove: () => void;
+  onMove?: (delta: -1 | 1) => void;
+  readOnly: boolean;
+}) {
+  if (readOnly) return null;
+  return (
+    <div className="flex shrink-0 items-center">
+      {onMove ? (
+        <>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={`上移 ${label}`} onClick={() => onMove(-1)}>
+            <ArrowUp />
+          </Button>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={`下移 ${label}`} onClick={() => onMove(1)}>
+            <ArrowDown />
+          </Button>
+        </>
+      ) : null}
+      <Button type="button" variant="ghost" size="icon-sm" aria-label={`删除 ${label}`} onClick={onRemove}>
+        <Trash2 />
+      </Button>
+    </div>
+  );
+}
+
+/** Read-only context from an upstream table, shown above the editor. */
+export function UpstreamNote({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-book-border bg-book px-4 py-3 text-sm text-book-foreground">
+      <div className="mb-1 text-xs font-semibold opacity-80">{title}</div>
+      {children}
+    </div>
+  );
+}

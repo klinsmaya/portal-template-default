@@ -5,8 +5,6 @@ import { toast } from "sonner";
 
 import {
   type Actor,
-  type StrategyContent,
-  emptyStrategyContent,
   getArtifactDef,
   isArtifactCode,
   validateArtifact,
@@ -23,8 +21,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { nextStep, workspacePath } from "@/lib/dingze/progress";
-import { useArtifactDetail, useSaveArtifact } from "@/lib/dingze/queries";
+import { useArtifactDetail, useSaveArtifact, useUpstreamPayloads } from "@/lib/dingze/queries";
 
+import { EDITABLE_CODES, emptyPayload } from "@/lib/dingze/artifact-payloads";
 import { type ProposedChange, applyChanges } from "@/lib/dingze/changes";
 import { PROPOSE_TOOL } from "@/lib/dingze/coach";
 import { errorMessage } from "@/lib/dingze/errors";
@@ -33,10 +32,9 @@ import { ArtifactActions, DissentList } from "./components/artifact-actions";
 import { CoachPanel } from "./components/coach-panel";
 import { StepBar } from "./components/step-bar";
 import { ValidationBar } from "./components/validation-bar";
-import { StrategyContentEditor } from "./editors/strategy-content-editor";
+import { ArtifactEditor } from "./editors/artifact-editor";
 import { useProjectContext } from "./project-context";
 
-const EDITABLE_CODES = new Set(["S1-01"]);
 const ENTERPRISE_ROLES = ["ent_lead", "dept_head", "member"];
 const CONSULTANT_ROLES = ["lead_consultant", "co_consultant"];
 
@@ -67,21 +65,16 @@ export default function WorkspacePage() {
   return <Workspace key={params.code} code={params.code} />;
 }
 
-function emptyPayload(code: string, primary: "house" | "sixfold"): unknown {
-  if (code === "S1-01") return emptyStrategyContent(primary);
-  return null;
-}
-
 function Workspace({ code }: { code: string }) {
   const { project, overview } = useProjectContext();
   const def = getArtifactDef(code);
   const detail = useArtifactDetail(project, code);
   const save = useSaveArtifact(project, code);
+  const upstream = useUpstreamPayloads(project, def.dependsOn).payloads;
 
   const artifact = detail.data?.artifact ?? null;
   const serverPayload =
-    artifact?.currentVersion?.payload ??
-    emptyPayload(code, project.primaryExpression);
+    artifact?.currentVersion?.payload ?? emptyPayload(code, project);
   const serverRev = artifact?.currentRev ?? 0;
   const [draft, setDraft] = useState<unknown>(serverPayload);
   const [baseRev, setBaseRev] = useState(serverRev);
@@ -104,8 +97,8 @@ function Workspace({ code }: { code: string }) {
   }, [dirty]);
 
   const issues = useMemo(
-    () => (draft ? validateArtifact(code, draft) : []),
-    [code, draft],
+    () => (draft ? validateArtifact(code, draft, upstream) : []),
+    [code, draft, upstream],
   );
   const blocking = issues.filter((i) => i.level === "error").length;
 
@@ -253,7 +246,7 @@ function Workspace({ code }: { code: string }) {
       projectRole: role,
       draft: latest.current.draft,
       issues: latest.current.draft
-        ? validateArtifact(code, latest.current.draft)
+        ? validateArtifact(code, latest.current.draft, upstream)
         : [],
     }),
   });
@@ -364,23 +357,21 @@ function Workspace({ code }: { code: string }) {
                 </Alert>
               ) : null}
 
-              {code === "S1-01" ? (
-                <StrategyContentEditor
-                  value={draft as StrategyContent}
+              {EDITABLE_CODES.has(code) ? (
+                <ArtifactEditor
+                  code={code}
+                  value={draft}
                   onChange={setDraft}
                   readOnly={readOnly}
                   issues={issues}
-                  canChangePrimary={
-                    role === "ent_lead" || role === "lead_consultant"
-                  }
+                  upstream={upstream}
+                  projectYear={project.year}
+                  canChangePrimary={role === "ent_lead" || role === "lead_consultant"}
                 />
               ) : (
                 <Alert>
                   <AlertTitle>这张表的编辑器在后续里程碑交付</AlertTitle>
-                  <AlertDescription>
-                    当前里程碑先打通定战略责第一张表（S1-01）的完整流程；其余成果表按计划在
-                    M1–M3 交付。
-                  </AlertDescription>
+                  <AlertDescription>定战略责的成果表已全部上线；定目标责、定行动责的成果表按计划在 M2–M3 交付。</AlertDescription>
                 </Alert>
               )}
 

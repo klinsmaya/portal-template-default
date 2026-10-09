@@ -1,6 +1,25 @@
 // Structural validation of artifact payloads. `error` issues block “本步完成” and
 // confirmation (Q3); `warning` issues are shown while editing but never block.
 
+import {
+  type IpoocDesign,
+  type KpiBreakdown,
+  type KpiScreening,
+  type MissionWorksheet,
+  type StrategyKpiTable,
+  type StrategyLogic,
+  type StrategyMap,
+  type VisionWorksheet,
+  validateIpooc,
+  validateKpiBreakdown,
+  validateKpiScreening,
+  validateMissionWorksheet,
+  validateStrategyKpis,
+  validateStrategyLogic,
+  validateStrategyMap,
+  validateVisionWorksheet,
+} from './measures';
+
 export type IssueLevel = 'error' | 'warning';
 
 export interface Issue {
@@ -227,13 +246,34 @@ export function validateRaci(matrix: RaciMatrix): Issue[] {
 
 // ── Dispatcher ──
 
-export function validateArtifact(code: string, payload: unknown): Issue[] {
+
+/**
+ * `upstream` carries upstream payloads by code where a check compares against them
+ * (S1-07 against S1-06); those checks only ever produce warnings.
+ */
+export function validateArtifact(code: string, payload: unknown, upstream: Record<string, unknown> = {}): Issue[] {
   if (payload === null || typeof payload !== 'object') {
     return [{ level: 'error', message: '成果内容为空' }];
   }
   switch (code) {
     case 'S1-01':
       return validateStrategyContent(payload as StrategyContent);
+    case 'S1-02':
+      return validateStrategyMap(payload as StrategyMap);
+    case 'S1-03':
+      return validateStrategyLogic(payload as StrategyLogic);
+    case 'S1-04':
+      return validateIpooc(payload as IpoocDesign);
+    case 'S1-05':
+      return validateKpiScreening(payload as KpiScreening);
+    case 'S1-06':
+      return validateStrategyKpis(payload as StrategyKpiTable);
+    case 'S1-07':
+      return validateKpiBreakdown(payload as KpiBreakdown, upstream['S1-06'] as StrategyKpiTable | undefined);
+    case 'M-MISSION':
+      return validateMissionWorksheet(payload as MissionWorksheet);
+    case 'M-VISION':
+      return validateVisionWorksheet(payload as VisionWorksheet);
     case 'S2-03':
     case 'S2-06':
       return validatePathSystem(payload as PathSystem);

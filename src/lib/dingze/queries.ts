@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import type { LifecycleAction } from "@dingze/shared";
 
@@ -106,4 +107,31 @@ export function useRecordDissent(project: ProjectSummary | undefined, code: stri
 
 export function useConsultantBoard() {
   return useQuery({ queryKey: dingzeKeys.board, queryFn: getConsultantBoard, refetchInterval: 60_000 });
+}
+
+/**
+ * Latest content of upstream artifacts, by code (their current version: downstream tables
+ * are drafted while upstream may still be in review). Unstarted artifacts are omitted.
+ */
+export function useUpstreamPayloads(project: ProjectSummary | undefined, codes: string[]) {
+  const results = useQueries({
+    queries: codes.map((code) => ({
+      queryKey: dingzeKeys.artifact(project?.id ?? 0, code),
+      queryFn: () => getArtifactDetail(project!.id, project!.spaceName, code),
+      enabled: !!project,
+    })),
+  });
+  const stamp = results.map((r) => r.dataUpdatedAt).join(",");
+  const payloads = useMemo(() => {
+    const out: Record<string, unknown> = {};
+    codes.forEach((code, i) => {
+      const artifact = results[i]?.data?.artifact;
+      const payload = artifact?.currentVersion?.payload ?? artifact?.lockedVersion?.payload;
+      if (payload) out[code] = payload;
+    });
+    return out;
+    // Recompute only when one of the upstream queries returns new data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stamp, codes.join(",")]);
+  return { payloads, isLoading: results.some((r) => r.isLoading) };
 }

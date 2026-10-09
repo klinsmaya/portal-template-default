@@ -39,12 +39,21 @@ export default defineTools({
       const payload = row?.get('currentVersion')?.get('payload') ?? null;
       const upstream = [];
       for (const code of def.dependsOn) {
-        const up = await repo.findOne({ filter: { projectId, code }, appends: ['lockedVersion', 'stepDoneVersion'] });
-        const version = up?.get('lockedVersion') ?? up?.get('stepDoneVersion');
+        const up = await repo.findOne({
+          filter: { projectId, code },
+          appends: ['lockedVersion', 'stepDoneVersion', 'currentVersion'],
+        });
+        // Prefer settled content; within a stage the upstream may still be a draft.
+        const [version, basis] = up?.get('lockedVersion')
+          ? [up.get('lockedVersion'), '已定版']
+          : up?.get('stepDoneVersion')
+            ? [up.get('stepDoneVersion'), '本步完成时的版本']
+            : [up?.get('currentVersion'), '草稿（尚未完成，可能还会改）'];
         upstream.push({
           code,
           name: getArtifactDef(code).name,
           status: up ? STATUS_LABELS[up.get('status') as keyof typeof STATUS_LABELS] : '未开始',
+          basis: version ? basis : null,
           payload: version?.get('payload') ?? null,
         });
       }
@@ -60,7 +69,9 @@ export default defineTools({
           status: row ? STATUS_LABELS[row.get('status') as keyof typeof STATUS_LABELS] : '未开始',
           rev: row?.get('currentRev') ?? 0,
           payload,
-          issues: payload ? validateArtifact(def.code, payload) : [],
+          issues: payload
+            ? validateArtifact(def.code, payload, Object.fromEntries(upstream.map((u) => [u.code, u.payload])))
+            : [],
           upstream,
         }),
       };

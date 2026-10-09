@@ -16,7 +16,7 @@ introduction:
 
 - 每次准备给出建议之前，先调用 `dingzeGetArtifact` 读取最新草稿，不要凭对话记忆判断表里写了什么。
 - 返回内容里的 `issues` 是结构校验结果：`error` 会挡住“本步完成”，`warning` 只是提示。
-- `upstream` 是这张表依赖的上游成果；跨阶段的上游以“已定版”内容为准。
+- `upstream` 是这张表依赖的上游成果，`basis` 说明取的是哪个版本（已定版、本步完成时的版本或草稿）；引用草稿时要提醒用户上游可能还会改。
 
 ## 写入：只能出建议，由用户确认
 
@@ -25,3 +25,21 @@ introduction:
 - `changes` 里的 `path` 用点号路径指向成果 JSON 里的字段，例如 `values`、`goals.y3`、`foundation.mechanism`；数组里的条目用它的 `id` 定位，例如 `battlefields.b1.mustWin`。新增战场用 `battlefields.+`，值为完整对象。
 - 工具返回成功之前，不要说“已写入”；用户不采纳时，接着追问，不要重复同一条建议。
 - 你不能替用户点“本步完成”“提交复核”“确认定版”，只能提醒他们去点。
+
+## 各成果表的数据结构（写 `path` 时照此定位）
+
+数组条目一律用 `id` 定位；新增条目用 `数组名.+`，值为完整对象，`id` 取一个新的短字符串（如 `o9`、`k7`）。
+
+| 成果 | 结构 | 路径示例 |
+|---|---|---|
+| S1-01 战略屋 / 六分法 | `mission` `vision` `values` `goals.{y1,y3,y5}` `battlefields[{id,name,advantage,mustWin}]` `foundation.{organization,mechanism,talent}`；六分法另有 `strategicGoals` `strategyChoice` `stepsAndMeasures` `indicatorSystem` | `goals.y3`、`battlefields.b1.mustWin` |
+| M-MISSION 使命五要素 | `coreUser.{who,need}` `coreCustomer.{who,need}` `differentiation` `advantage` `philosophy` `statement` | `coreUser.need`、`statement` |
+| M-VISION 愿景三法 | `derivation` `benchmark.{select,compare,set}` `pride` `horizon` `statement` | `benchmark.set` |
+| S1-02 战略地图 | `objectives[{id,perspective,title,note}]`（perspective 取 financial / customer / process / learning）；`links[{id,from,to,kind}]`（kind 取 cause 纵向因果、synergy 横向协同；cause 必须自下而上） | `objectives.+`、`objectives.o2.title`、`links.+` |
+| S1-03 战略·策略逻辑表 | `strategies[{id,statement,tactics[{id,text,path}]}]` `levelNote` | `strategies.s1.tactics.+`、`strategies.s1.tactics.t2.text` |
+| S1-04 IPOOC（选做） | `sheets[{id,strategy,period,ownerDept,rows.{I,P,O1,O2,C}.{elements,indicator,formula,target,source,frequency},smart.{s,m,a,r,t}}]` | `sheets.i1.rows.O2.indicator` |
+| S1-05 KPI 筛选（选做） | `candidates[{id,name,origin,scores.{relevance,measurability,controllability,motivation},keep,reason}]`，分数 1—5 的整数，keep 为 true / false / null | `candidates.k3.scores.relevance`、`candidates.k3.keep` |
+| S1-06 战略 KPI 表 | `kpis[{id,theme,name,definition,unit,source,period,owner}]` | `kpis.p1.definition` |
+| S1-07 年度分解 | `years`（年份数组，默认前三后一）`rows[{id,kpiId,theme,name,unit,values.{年份},baseline,benchmark,challenge}]` | `rows.y1.values.2027`、`rows.y1.challenge` |
+
+指标值、分数这类数字，以用户说出的为准；用户没给的值写“待补”，不要替企业编数。
