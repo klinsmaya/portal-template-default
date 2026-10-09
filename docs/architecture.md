@@ -27,13 +27,13 @@
 | `src/pages/ops/`、`src/pages/enterprise/` | 运营管理、本企业 |
 | `src/lib/dingze/` | 接口封装（api、ops-api、records-api）、查询钩子、导出（sheets / xlsx / docx）、计划书合成、AI 建议应用、进度与下一步 |
 | `src/components/dingze/` | 状态徽标、通知铃铛 |
-| `server-plugins/plugin-dingze/src/shared/` | `catalog`（成果目录与依赖）、`lifecycle`（状态机与解锁）、`validators` / `measures` / `goals` / `actions`（各阶段模型与校验）、`diff`、`board`、`book-notes` |
-| `server-plugins/plugin-dingze/src/server/` | `collections/`、`services/`（access、artifacts、registry、notify、board、enterprises、ops）、`plugin.ts` |
+| `server-plugins/plugin-dingze/src/shared/` | `catalog`（成果目录与依赖）、`lifecycle`（状态机与解锁）、`validators` / `measures` / `goals` / `actions`（各阶段模型与校验）、`diff`、`board`、`book-notes`、`materials`（画像与资料检索）、`usage`（用量汇总）、`guidance`（引导缺口）、`expert`（专家咨询流转） |
+| `server-plugins/plugin-dingze/src/server/` | `collections/`、`services/`（access、artifacts、registry、notify、board、enterprises、ops、comments、materials、usage、guidance、expert）、`plugin.ts` |
 | `server-plugins/plugin-dingze/src/ai/` | `ai-employees/`（dingze-strategy-coach、dingze-goal-coach、dingze-action-coach）、`skills/`（内容 / 逻辑 / 衡量共识、找路径、RACI 级联、行动计划、工作台读写） |
 | `server-plugins/scripts/` | 插件构建与部署脚本 |
 | `tests/`、`e2e/` | 单测与 E2E |
 
-## 3. 数据模型（插件 collections，均带空间字段）
+## 3. 数据模型（插件 collections；除注明外均带空间字段）
 
 | 表 | 用途 |
 |---|---|
@@ -49,6 +49,12 @@
 | `dz_audit_events` | 审计：动作、原因、前后状态、版本 |
 | `dz_exports` | 导出记录 |
 | `dz_notifications` | 站内通知 |
+| `dz_comments` | 批注：锚点（行 id / 字段路径）、内容、@ 提及、回复（parentId）、解决状态、所在版本 |
+| `dz_materials` | 企业资料：标题、类型、文件名、提取后的文字（≤ 15 万字） |
+| `dz_profiles` | 企业画像：条目（类别、主题、内容、来源、草稿 / 已复核 / 已确认）、rev（并发保护） |
+| `dz_expert_requests` | 专家咨询：议题、问题、引用的定版版本（code / versionId / rev）、状态、专家、预约、纪要、意见 |
+| `dz_guidance_gaps` | 引导缺口（**平台共享，无空间字段**）：项目、成果、类别、描述、期望、摘录、规则包版本、评审状态与意见、发布版本 |
+| `dz_ai_sessions` | 数字咨询师对话归属项目的缓存（**无空间字段**，只在服务端汇总用量时读写） |
 
 成果内容是整张表的结构化快照，内部条目带稳定 `id`，供版本对比、数字咨询师按路径写入和跨表追溯。
 
@@ -60,6 +66,10 @@
 | 成果 | `artifactDetail`、`saveArtifact`、`transition`（stepDone / submitReview / approve / returnToEdit / confirm / reopen / forceLock / forceReturn）、`recordDissent`、`grantException` |
 | 成果管理与交付 | `artifactRegistry`、`artifactHistory`、`versionDiff`、`deliveryBundle`、`recordExport` |
 | 通知 | `myNotifications`、`markNotificationsRead` |
+| 批注 | `listComments`、`addComment`、`resolveComment` |
+| 资料与画像 | `listMaterials`、`getMaterial`、`addMaterial`、`deleteMaterial`、`searchMaterials`、`getProfile`、`saveProfile` |
+| 专家咨询 | `listExpertRequests`、`expertRequestDetail`、`createExpertRequest`、`actOnExpertRequest`（assign / schedule / answer / close / cancel） |
+| 运营看板与引导缺口 | `opsBoard`、`addGuidanceGap`、`listGuidanceGaps`、`reviewGuidanceGap` |
 | 运营 | `provisionEnterprise`、`listEnterprises`、`enterpriseDetail`、`updateEnterprise`、`addEnterpriseMembers`、`removeEnterpriseMember`、`saveOrgUnit`、`deleteOrgUnit`、`createProject`、`updateProject`、`setProjectMembers`、`removeProjectMember`、`listUsers`、`createUser`、`resetPassword` |
 
 写操作带 `x-spaces: <企业空间>`；跨企业读取（我的项目、工作台、通知）由插件按调用者所在空间汇总。
@@ -79,15 +89,21 @@
 - 前端工具 `dingzeProposeChanges`（需用户确认）：按点号路径写入成果，数组条目按 `id` 定位，`数组名.+` 追加；写入后生成 `ai_draft` 版本。
 - Skill `dingze-workspace/SKILLS.md` 记录每张表的 payload 路径；阶段 Skill 来自书稿方法论包。
 - 书中方法（要点 / 坑 / 定版门禁）在 `shared/book-notes.ts`，前端面板与运营“方法与规则包”页共用。
+- 只读的服务端工具（`defineTools`，自动允许）：`dingzeGetArtifact`（读成果）、`dingzeSearchMaterials`（列资料 / 关键词检索片段 / 分页读全文）。只读工具放在服务端，是因为前端自动允许的工具并行调用时会卡住对话。
+- 用量：NocoBase 的 `aiUsageEvents` 记录每轮的 Token；对话所属项目取自该对话用户消息的页面上下文（`workContext[].content.projectId`），首次识别后缓存到 `dz_ai_sessions`。运营看板按项目汇总三位数字咨询师的轮次、Token、使用人数，只记录不计费。
+- 引导缺口记录时带当时的插件（规则包）版本，评审“已发布”时填写包含改进的新版本号。
 
 ## 7. 角色与隔离
 
 - 系统角色：`dz_consult_admin`、`dz_consultant`、`dz_ent_admin`、`dz_ent_member`、`dz_ops`（插件首次启用时创建）；门户入口按角色授权。
 - 项目角色：企业项目负责人、部门负责人、项目成员、只读成员、主咨询师、协作咨询师。
-- 一企业一空间：所有插件表带空间字段，请求必须带空间头；用户只属于被开通企业的空间；不属于空间的请求被多空间层拒绝（403），属于空间但非项目成员被插件拒绝（404）。
+- 一企业一空间：插件业务表带空间字段，请求必须带空间头；用户只属于被开通企业的空间；不属于空间的请求被多空间层拒绝（403），属于空间但非项目成员被插件拒绝（404）。
+- 专家咨询的专家须是该企业空间里的咨询师；非项目成员的专家只能通过咨询申请读取申请时引用的定版版本。
+- 引导缺口是平台共享表，只有运营 / 咨询管理员能列出；项目名只对其所在空间可见。
 
 ## 8. 导出
 
 - Excel：`src/lib/dingze/export/sheets.ts` 把成果转成表模型（表头、行、合并区），`xlsx.ts` 用 exceljs 生成；未定版文件带“草稿”标记。
-- Word：`plan-book.ts` 合成八章模型，`docx.ts` 用 docx 生成；公司级与部门级计划书共用。
+- Word：`plan-book.ts` 合成八章模型，`docx.ts` 用 docx 生成；公司级与部门级计划书共用。公司级第一章附战略屋（或六分法）与战略地图：SVG 原图内嵌，另附 PNG 兜底。
+- 图片：`diagram-svg.ts` 用纯函数生成独立 SVG（只用文字与图形、固定浅色，不用 foreignObject，按宽度折行），`diagram-image.ts` 在浏览器画布上转 PNG（2 倍）；地图连线端点由 `map-layout.ts` 的 `linkLines` 计算，编辑器内的地图同用。
 - 所有导出记入 `dz_exports`，在交付页展示。
