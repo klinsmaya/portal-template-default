@@ -1,5 +1,10 @@
 import {
   type BudgetWorksheet,
+  type CompanyPlanBook,
+  type DeptPlanBook,
+  type ProgressPlan,
+  type ProjectCharterSet,
+  type ResourceMatch,
   type DecodeMap,
   type DeptUndertakingTable,
   type GoalPathSystem,
@@ -24,12 +29,16 @@ import type {
 
 import type { ProjectOrgUnit, ProjectTeamMember } from "@/lib/dingze/api";
 
+import { CharterEditor } from "./charter-editor";
 import { DecodeMapEditor } from "./decode-map-editor";
 import { BudgetWorksheetEditor, GoalTargetsEditor } from "./goal-targets-editor";
 import { IpoocEditor } from "./ipooc-editor";
 import { KeyProjectsEditor } from "./key-projects-editor";
 import { PathSystemEditor } from "./path-system-editor";
+import { CompanyPlanBookEditor, DeptPlanBookEditor } from "./plan-book-editor";
+import { ProgressPlanEditor } from "./progress-plan-editor";
 import { RaciEditor } from "./raci-editor";
+import { ResourceMatchEditor } from "./resource-match-editor";
 import { ScorecardEditor } from "./scorecard-editor";
 import { UndertakingEditor } from "./undertaking-editor";
 import { KpiBreakdownEditor } from "./kpi-breakdown-editor";
@@ -53,6 +62,8 @@ type Props = {
   keyProjectLevel: 1 | 2;
   orgUnits: ProjectOrgUnit[];
   team: ProjectTeamMember[];
+  scheduleScale: "month" | "quarter";
+  enterprise: string;
 };
 
 /** Picks the editor for an artifact code; every editor works on that code's payload type. */
@@ -68,7 +79,10 @@ export function ArtifactEditor({
   keyProjectLevel,
   orgUnits,
   team,
+  scheduleScale,
+  enterprise,
 }: Props) {
+  const people = team.map((m) => m.nickname).filter(Boolean);
   const common = { readOnly, issues, onChange };
   switch (code) {
     case "S1-01":
@@ -135,7 +149,7 @@ export function ArtifactEditor({
           value={value as KeyProjectList}
           upstream={upstream as { "S2-03"?: GoalPathSystem }}
           keyProjectLevel={keyProjectLevel}
-          people={team.map((m) => m.nickname).filter(Boolean)}
+          people={people}
         />
       );
     case "S2-04":
@@ -144,6 +158,24 @@ export function ArtifactEditor({
       return <UndertakingEditor {...common} value={value as DeptUndertakingTable} upstream={upstream} />;
     case "S2-07":
       return <ScorecardEditor {...common} value={value as ScorecardSet} upstream={upstream as { "S2-05"?: DeptUndertakingTable }} />;
+    case "S3-02":
+      return <CharterEditor {...common} value={value as ProjectCharterSet} upstream={upstream} projectYear={projectYear} people={people} />;
+    case "S3-05":
+      return (
+        <ProgressPlanEditor
+          {...common}
+          value={value as ProgressPlan}
+          upstream={upstream as { "S3-02"?: ProjectCharterSet }}
+          projectYear={projectYear}
+          scheduleScale={scheduleScale}
+        />
+      );
+    case "S3-06":
+      return <ResourceMatchEditor {...common} value={value as ResourceMatch} upstream={upstream as { "S3-02"?: ProjectCharterSet }} />;
+    case "S3-07":
+      return <CompanyPlanBookEditor {...common} value={value as CompanyPlanBook} upstream={upstream} enterprise={enterprise} projectYear={projectYear} />;
+    case "S3-08":
+      return <DeptPlanBookEditor {...common} value={value as DeptPlanBook} upstream={upstream} enterprise={enterprise} projectYear={projectYear} />;
     default:
       return null;
   }

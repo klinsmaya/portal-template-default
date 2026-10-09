@@ -8,6 +8,7 @@ import {
   LifecycleError,
   type StateMap,
   CONSULTANTS,
+  PLAN_BOOK_BUNDLE,
   getArtifactDef,
   hasBlockingIssues,
   isArtifactCode,
@@ -234,6 +235,19 @@ async function markDownstreamStale(
   return marked;
 }
 
+const PLAN_BOOKS = ['S3-07', 'S3-08'];
+
+/** Current content of the artifacts `def` depends on, for checks that compare against them. */
+async function upstreamPayloads(ctx: Context, projectId: number, def: ArtifactDef, transaction?: any) {
+  if (def.dependsOn.length === 0) return {};
+  const rows = await ctx.db.getRepository('dz_artifacts').find({
+    filter: { projectId, code: { $in: def.dependsOn } },
+    appends: ['currentVersion'],
+    transaction,
+  });
+  return Object.fromEntries(rows.map((r: any) => [r.get('code'), r.get('currentVersion')?.get('payload') ?? null]));
+}
+
 export async function transitionArtifact(
   ctx: Context,
   pc: ProjectContext,
@@ -260,9 +274,26 @@ export async function transitionArtifact(
       if (!unlock.unlocked && !artifact.get('exception')) throw new HttpError(409, unlock.waitingFor ?? '这一步尚未解锁', 'LOCKED_STEP');
     }
     if (requiresValidation(action) && !artifact.get('exception')) {
-      const issues = validateArtifact(def.code, artifact.get('currentVersion')?.get('payload'));
+      const upstream = await upstreamPayloads(ctx, projectId, def, transaction);
+      const issues = validateArtifact(def.code, artifact.get('currentVersion')?.get('payload'), upstream);
       if (hasBlockingIssues(issues)) {
         throw new HttpError(422, '还有未通过的校验', 'VALIDATION_FAILED', { issues });
+      }
+    }
+
+    // A plan book is confirmed together with the tables it embeds (spec §二(八)6).
+    const bundle =
+      PLAN_BOOKS.includes(def.code) && action === 'confirm'
+        ? await ctx.db.getRepository('dz_artifacts').find({ filter: { projectId, code: { $in: PLAN_BOOK_BUNDLE } }, transaction })
+        : [];
+    if (PLAN_BOOKS.includes(def.code) && action === 'confirm') {
+      const notReady = PLAN_BOOK_BUNDLE.filter((code) => {
+        const row = bundle.find((b: any) => b.get('code') === code);
+        return !row || !['pending_confirm', 'locked'].includes(row.get('status'));
+      });
+      if (notReady.length) {
+        const names = notReady.map((code) => `${getArtifactDef(code).specId} ${getArtifactDef(code).name}`).join('、');
+        throw new HttpError(409, `计划书引用的${names}还没有复核通过，请先完成这些表的复核`, 'BUNDLE_NOT_READY');
       }
     }
 
@@ -270,6 +301,17 @@ export async function transitionArtifact(
     if (action === 'stepDone') values.stepDoneVersionId = artifact.get('currentVersionId');
     if (action === 'confirm' || action === 'forceLock') values.lockedVersionId = artifact.get('currentVersionId');
     await artifact.update(values, { transaction });
+
+    for (const row of bundle) {
+      if (row.get('status') !== 'pending_confirm') continue;
+      await row.update({ status: 'locked', lockedVersionId: row.get('currentVersionId') }, { transaction });
+      await audit(
+        ctx,
+        pc,
+        { code: row.get('code'), action: 'confirm', fromStatus: 'pending_confirm', toStatus: 'locked', rev: row.get('currentRev'), meta: { with: def.code } },
+        transaction,
+      );
+    }
 
     let stale: string[] = [];
     if (PROPAGATING.includes(action)) {

@@ -37,6 +37,18 @@ import {
   validateRaciTable,
   validateScorecards,
 } from './goals';
+import {
+  type CompanyPlanBook,
+  type DeptPlanBook,
+  type ProgressPlan,
+  type ProjectCharterSet,
+  type ResourceMatch,
+  validateCharterSet,
+  validateCompanyPlanBook,
+  validateDeptPlanBook,
+  validateProgressPlan,
+  validateResourceMatch,
+} from './actions';
 
 export type IssueLevel = 'error' | 'warning';
 
@@ -315,6 +327,16 @@ export function validateArtifact(code: string, payload: unknown, upstream: Recor
       return validateDeptUndertaking(payload as DeptUndertakingTable, upstream['S2-04'] as RaciTable | undefined);
     case 'S2-07':
       return validateScorecards(payload as ScorecardSet);
+    case 'S3-02':
+      return validateCharterSet(payload as ProjectCharterSet);
+    case 'S3-05':
+      return validateProgressPlan(payload as ProgressPlan, upstream['S3-02'] as ProjectCharterSet | undefined);
+    case 'S3-06':
+      return validateResourceMatch(payload as ResourceMatch, upstream['S3-02'] as ProjectCharterSet | undefined);
+    case 'S3-07':
+      return validateCompanyPlanBook(payload as CompanyPlanBook);
+    case 'S3-08':
+      return validateDeptPlanBook(payload as DeptPlanBook);
     default:
       return [];
   }

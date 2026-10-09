@@ -31,6 +31,7 @@ import { errorMessage } from "@/lib/dingze/errors";
 import { ArtifactActions, DissentList } from "./components/artifact-actions";
 import { CoachPanel } from "./components/coach-panel";
 import { ExportButton } from "./components/export-button";
+import { PlanBookExportButton } from "./components/plan-book-export";
 import { StepBar } from "./components/step-bar";
 import { ValidationBar } from "./components/validation-bar";
 import { ArtifactEditor } from "./editors/artifact-editor";
@@ -301,6 +302,16 @@ function Workspace({ code }: { code: string }) {
                 upstream={upstream}
                 dirty={dirty}
               />
+              <PlanBookExportButton
+                code={code}
+                payload={artifact?.currentVersion?.payload}
+                rev={artifact?.currentRev ?? 0}
+                status={status}
+                enterprise={project.enterprise?.name ?? "企业"}
+                year={project.year}
+                upstream={upstream}
+                dirty={dirty}
+              />
               {!readOnly && EDITABLE_CODES.has(code) ? (
                 <Button
                   variant="outline"
@@ -382,11 +393,13 @@ function Workspace({ code }: { code: string }) {
                   keyProjectLevel={project.keyProjectLevel}
                   orgUnits={overview.orgUnits ?? []}
                   team={overview.team ?? []}
+                  scheduleScale={project.scheduleScale}
+                  enterprise={project.enterprise?.name ?? "企业"}
                 />
               ) : (
                 <Alert>
-                  <AlertTitle>这张表的编辑器在后续里程碑交付</AlertTitle>
-                  <AlertDescription>定战略责、定目标责的成果表已上线；定行动责的成果表按计划在 M3 交付。</AlertDescription>
+                  <AlertTitle>这张表暂无在线编辑器</AlertTitle>
+                  <AlertDescription>请按方法手册在线下完成，成果以附件形式由咨询师归档。</AlertDescription>
                 </Alert>
               )}
 

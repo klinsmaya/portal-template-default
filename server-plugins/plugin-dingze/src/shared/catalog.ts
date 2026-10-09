@@ -171,7 +171,7 @@ export const ARTIFACTS: ArtifactDef[] = [
   {
     code: 'S3-07', specId: 'S3-07', name: '公司级年度经营计划书', stage: 'action',
     task: '年度经营计划书', step: '公司计划', bookRef: '公司级计划书模板（8 章）',
-    priority: 'P0', editor: 'plan-book', unlockAfter: ['S3-06'], dependsOn: ['S1-07', 'S2-03', 'S2-04', 'S2-05', 'S2-07', 'S3-02', 'S3-05', 'S3-06'],
+    priority: 'P0', editor: 'plan-book', unlockAfter: ['S3-06'], dependsOn: ['S1-06', 'S1-07', 'S2-03-T', 'S2-03', 'S2-04', 'S2-05', 'S2-07', 'S3-02', 'S3-05', 'S3-06'],
   },
   {
     code: 'S3-08', specId: 'S3-08', name: '部门年度经营计划书', stage: 'action',

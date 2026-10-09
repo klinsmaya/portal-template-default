@@ -1,4 +1,14 @@
 import {
+  CLASS_LABELS,
+  NODE_STATUS_LABELS,
+  PRIORITY_FACTORS,
+  RESOURCE_CATEGORIES,
+  SCREEN_QUESTIONS,
+  type ProgressPlan,
+  type ProjectCharterSet,
+  type ResourceMatch,
+  classify,
+  priorityScore,
   DECODE_CATEGORIES,
   type DecodeMap,
   type DeptUndertakingTable,
@@ -423,6 +433,144 @@ function scorecardSheets(set: ScorecardSet): SheetModel[] {
   });
 }
 
+const yesNo = (v: boolean | null | undefined): Cell => (v === true ? "是" : v === false ? "否" : null);
+
+function charterSheets(set: ProjectCharterSet): SheetModel[] {
+  const screening = sheet("项目甄别", [
+    ["候选项目 / 路径", 28],
+    ["成果导向命名", 28],
+    ...SCREEN_QUESTIONS.map((q) => [q.label, 16] as [string, number]),
+    ["甄别结果", 16],
+  ]);
+  for (const item of set.screening ?? []) {
+    const cls = classify(item.answers);
+    screening.rows.push([item.name, item.renamed, ...SCREEN_QUESTIONS.map((q) => yesNo(item.answers?.[q.key])), cls ? CLASS_LABELS[cls] : null]);
+  }
+  const charters = set.charters ?? [];
+  const list = sheet("项目任务书", [
+    ["项目编号", 14],
+    ["项目名称", 24],
+    ["战略关联", 18],
+    ...PRIORITY_FACTORS.map((f) => [`${f.label}（${f.weight * 100}%）`, 10] as [string, number]),
+    ["优先级得分", 10],
+    ["项目目标", 30],
+    ["起止时间", 18],
+    ["范围（做）", 24],
+    ["范围（不做）", 24],
+    ["交付物", 24],
+    ["里程碑", 24],
+    ["牵头部门", 12],
+    ["负责人", 10],
+    ["RACI", 20],
+    ["人力 FTE", 10],
+    ["预算", 10],
+    ["物料", 14],
+    ["风险与应对", 30],
+    ["假设与约束", 20],
+    ["结果验收", 20],
+    ["过程验收", 20],
+    ["结项", 20],
+  ]);
+  for (const c of charters) {
+    list.rows.push([
+      c.code,
+      c.name,
+      c.theme,
+      ...PRIORITY_FACTORS.map((f) => c.priority?.[f.key] ?? null),
+      priorityScore(c.priority),
+      c.objective,
+      [c.start, c.end].filter(Boolean).join(" ~ "),
+      c.inScope,
+      c.outOfScope,
+      c.deliverables,
+      c.milestones,
+      c.deptName,
+      c.owner,
+      c.raci,
+      c.resources?.fte,
+      c.resources?.budget,
+      c.resources?.material,
+      (c.risks ?? []).map((r) => `${r.risk}（触发：${r.trigger}；应对：${r.response}）`).join("\n"),
+      c.assumptions,
+      c.acceptance?.result,
+      c.acceptance?.process,
+      c.acceptance?.close,
+    ]);
+  }
+  const wbs = sheet("WBS", [
+    ["项目编号", 14],
+    ["项目名称", 22],
+    ["WBS 编码", 10],
+    ["工作包", 26],
+    ["交付物", 24],
+    ["完成定义", 26],
+    ["责任人", 10],
+    ["前置工作包", 18],
+  ]);
+  for (const c of charters) {
+    const items = c.wbs ?? [];
+    const numbers = new Map<string, string>();
+    const walk = (parentId: string | null, prefix: string) =>
+      items
+        .filter((w) => (w.parentId ?? null) === parentId)
+        .forEach((w, i) => {
+          const no = prefix ? `${prefix}.${i + 1}` : String(i + 1);
+          numbers.set(w.id, no);
+          wbs.rows.push([c.code, c.name, no, w.name, w.deliverable, w.doneDefinition, w.owner, ""]);
+          walk(w.id, no);
+        });
+    const start = wbs.rows.length;
+    walk(null, "");
+    for (let r = start; r < wbs.rows.length; r++) {
+      const w = items.find((x) => numbers.get(x.id) === wbs.rows[r][2]);
+      wbs.rows[r][7] = (w?.dependsOn ?? []).map((d) => numbers.get(d) ?? "").filter(Boolean).join("、");
+    }
+  }
+  return [screening, list, wbs];
+}
+
+function progressPlanSheets(plan: ProgressPlan): SheetModel[] {
+  const s = sheet("计划实施推进表", [
+    ["项目", 24],
+    ["时间", 10],
+    ["节点名称", 22],
+    ["成果", 28],
+    ["验收标准", 28],
+    ["责任人", 10],
+    ["状态", 8],
+    ["前置节点", 22],
+  ]);
+  const names = new Map((plan.rows ?? []).flatMap((r) => (r.nodes ?? []).map((n) => [n.id, n.name] as const)));
+  for (const row of plan.rows ?? []) {
+    const start = s.rows.length;
+    for (const n of row.nodes ?? [])
+      s.rows.push([row.name, n.time, n.name, n.deliverable, n.acceptance, n.owner, NODE_STATUS_LABELS[n.status] ?? n.status, (n.dependsOn ?? []).map((d) => names.get(d) ?? "").filter(Boolean).join("、")]);
+    if (s.rows.length - start > 1) s.merges.push([start, 0, s.rows.length - 1, 0]);
+  }
+  return [s];
+}
+
+function resourceSheets(match: ResourceMatch, charters?: ProjectCharterSet): SheetModel[] {
+  const s = sheet("项目资源匹配表", [
+    ["项目", 24],
+    ["类别", 16],
+    ["需求", 24],
+    ["存量", 20],
+    ["缺口", 18],
+    ["补齐方式", 26],
+    ["责任人", 10],
+    ["重大缺口", 8],
+  ]);
+  const label = new Map(RESOURCE_CATEGORIES.map((c) => [c.key, c.label]));
+  const projectName = (id: string | null) => {
+    const c = (charters?.charters ?? []).find((x) => x.id === id);
+    return c ? `${c.code} ${c.name}` : "未关联项目";
+  };
+  for (const r of match.rows ?? [])
+    s.rows.push(r.none ? [projectName(r.charterId), label.get(r.category) ?? r.category, "无", null, null, null, null, null] : [projectName(r.charterId), label.get(r.category) ?? r.category, r.need, r.stock, r.gap, r.approach, r.owner, r.major ? "是" : null]);
+  return [s];
+}
+
 /** The sheets an artifact exports to; empty for artifacts without an export yet. */
 export function artifactSheets(code: string, payload: unknown, upstream: Record<string, unknown> = {}): SheetModel[] {
   if (!payload || typeof payload !== "object") return [];
@@ -473,6 +621,12 @@ export function artifactSheets(code: string, payload: unknown, upstream: Record<
       return undertakingSheets(payload as DeptUndertakingTable);
     case "S2-07":
       return scorecardSheets(payload as ScorecardSet);
+    case "S3-02":
+      return charterSheets(payload as ProjectCharterSet);
+    case "S3-05":
+      return progressPlanSheets(payload as ProgressPlan);
+    case "S3-06":
+      return resourceSheets(payload as ResourceMatch, upstream["S3-02"] as ProjectCharterSet | undefined);
     default:
       return [];
   }

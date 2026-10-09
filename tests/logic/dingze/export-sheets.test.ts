@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { emptyStrategyContent } from "@dingze/shared";
+import { emptyCharter, emptyStrategyContent, resourceRow, wbsPackage } from "@dingze/shared";
 
 import { artifactSheets } from "@/lib/dingze/export/sheets";
 import { exportFileName } from "@/lib/dingze/export/xlsx";
@@ -41,7 +41,7 @@ describe("artifact export sheets", () => {
   });
 
   it("has nothing to export for unknown codes or empty payloads", () => {
-    expect(artifactSheets("S3-02", { a: 1 })).toEqual([]);
+    expect(artifactSheets("S3-07", { a: 1 })).toEqual([]);
     expect(artifactSheets("S1-02", null)).toEqual([]);
   });
 
@@ -83,5 +83,40 @@ describe("path system export (表 3-9 / 表 3-10)", () => {
     ]);
     expect(tree.merges).toEqual(expect.arrayContaining([[0, 2, 1, 2], [0, 0, 2, 0], [0, 1, 2, 1]]));
     expect(decode.rows.map((r) => r[0])).toEqual(["财务", null, "客户"]);
+  });
+});
+
+describe("S3 action sheets", () => {
+  const set = {
+    screening: [],
+    charters: [
+      emptyCharter({
+        id: "pc1",
+        code: "2026OPSP001",
+        name: "物流车队拓展",
+        wbs: [
+          wbsPackage({ id: "w1", name: "客户开发" }),
+          wbsPackage({ id: "w2", parentId: "w1", level: 2, name: "名单梳理" }),
+          wbsPackage({ id: "w3", name: "合同签订", dependsOn: ["w1"] }),
+        ],
+      }),
+    ],
+  };
+
+  it("numbers WBS packages by outline and resolves dependencies to those numbers", () => {
+    const [, , wbs] = artifactSheets("S3-02", set);
+    expect(wbs.rows.map((r) => [r[2], r[3], r[7]])).toEqual([
+      ["1", "客户开发", ""],
+      ["1.1", "名单梳理", ""],
+      ["2", "合同签订", "1"],
+    ]);
+  });
+
+  it("writes a declared-unneeded resource category as 无 and labels rows by charter", () => {
+    const match = { rows: [resourceRow({ charterId: "pc1", category: "it", none: true }), resourceRow({ category: "finance", need: "50 万", major: true })] };
+    const [s] = artifactSheets("S3-06", match, { "S3-02": set });
+    expect(s.rows[0].slice(0, 3)).toEqual(["2026OPSP001 物流车队拓展", "信息化（信息化 / 数据）", "无"]);
+    expect(s.rows[1][0]).toBe("未关联项目");
+    expect(s.rows[1][7]).toBe("是");
   });
 });
